@@ -1,0 +1,1056 @@
+I have an existing **single-page HTML-based web application (HTML + CSS + JavaScript)** for analyzing and documenting SQL database schemas.
+
+The main objective of the application is:
+
+> Accept an SQL schema from the user, automatically parse and analyze it, detect tables and relationships, generate an interactive ER diagram, provide a table-by-table documentation interface where the user can describe tables and fields, and export the documentation as JSON so that it can later be imported to update or maintain the documentation.
+
+I want you to **enhance the existing application substantially** while preserving all current functionality. Do not remove or break any existing features.
+
+The application should evolve from a simple **SQL → Documentation → JSON** tool into a complete:
+
+> **Database Schema & Documentation Management System**
+
+## 1. Preserve the Existing Core Functionality
+
+Keep and improve the existing capabilities:
+
+* Import/paste SQL schema.
+* Parse SQL automatically.
+* Detect:
+
+  * Databases/schemas
+  * Tables
+  * Columns
+  * Data types
+  * Primary keys
+  * Foreign keys
+  * Nullable fields
+  * Unique fields
+  * Default values
+  * Relationships
+* Automatically generate an interactive ER diagram.
+* Display database tables individually.
+* Allow the user to enter/edit:
+
+  * Table descriptions
+  * Field descriptions
+* Search and filter tables/fields.
+* Export documentation as JSON.
+* Import previously exported JSON documentation.
+* Apply imported documentation to the current schema.
+* Compare the current SQL schema with existing documentation.
+* Keep the existing AI assistant functionality.
+* Keep the application completely client-side and contained in **one HTML file**.
+
+Do not introduce a backend unless explicitly required. The application should remain usable offline.
+
+---
+
+# 2. Redesign the Application Around a Documentation Workspace
+
+The application should no longer feel like only an SQL parser.
+
+The new conceptual workflow should be:
+
+**SQL Schema → Schema Analysis → Documentation Workspace → Change Detection → Review → AI Assistance → Versioning → Export/Publish**
+
+Use a professional desktop/web-app style interface.
+
+Suggested main tabs:
+
+1. **Dashboard**
+2. **Schema Explorer**
+3. **ER Diagram**
+4. **Documentation**
+5. **Changes**
+6. **Versions**
+7. **Import / Export**
+8. **AI Assistant**
+9. **Settings**
+
+The current **JSON Documentation** tab should preferably become **Import / Export**, because JSON is an exchange format rather than the main business function of the application.
+
+---
+
+# 3. Dashboard
+
+Create a professional dashboard showing the current documentation state.
+
+Display cards such as:
+
+* Number of tables
+* Number of fields
+* Number of relationships
+* Fully documented tables
+* Partially documented tables
+* Undocumented tables
+* Documentation coverage %
+* Tables changed since the last version
+* Fields changed since the last version
+* Pending documentation changes
+* Current documentation version
+* Current schema version
+
+Add visual indicators such as:
+
+* Progress bars
+* Status badges
+* Coverage percentage
+* Change counters
+
+Example:
+
+**Documentation Coverage**
+
+`████████████████░░░░ 82%`
+
+Also show a status such as:
+
+* Fully Documented
+* Partially Documented
+* Documentation Behind Schema
+* Changes Require Review
+
+---
+
+# 4. Schema Explorer
+
+Add a dedicated schema navigation panel.
+
+Example:
+
+```text
+Database
+│
+├── students
+│   ├── student_id
+│   ├── name
+│   ├── email
+│   └── department_id
+│
+├── departments
+│   ├── department_id
+│   └── department_name
+│
+└── courses
+    ├── course_id
+    ├── course_name
+    └── department_id
+```
+
+Clicking a table should open its documentation.
+
+Provide:
+
+* Search
+* Filter
+* Table status
+* Number of undocumented fields
+* Number of relationships
+
+---
+
+# 5. Documentation Workspace
+
+Improve the current table documentation interface.
+
+For every table provide:
+
+### Table-level information
+
+* Table name
+* Schema/database
+* Description
+* Business meaning
+* Business domain
+* Owner
+* Documentation status
+* Last modified
+* Last reviewed
+* Author
+* Reviewer
+
+### Field-level information
+
+For every field provide:
+
+* Field name
+* Data type
+* Primary key
+* Foreign key
+* References
+* Nullable
+* Unique
+* Default value
+* Description
+* Business meaning
+* Example value
+* Allowed values
+* Source
+* Sensitivity/classification if applicable
+
+Use status indicators such as:
+
+* `NEW`
+* `DOCUMENTED`
+* `MODIFIED`
+* `REVIEW REQUIRED`
+* `OBSOLETE`
+
+Clearly distinguish technical metadata automatically extracted from SQL from information manually entered by the user.
+
+---
+
+# 6. Documentation Coverage
+
+Calculate documentation coverage automatically.
+
+For example:
+
+```text
+Tables: 32
+Documented Tables: 25
+Partially Documented: 5
+Undocumented: 2
+
+Fields: 418
+Documented Fields: 351
+
+Coverage: 84%
+```
+
+Allow filtering by:
+
+* Fully documented
+* Partially documented
+* Undocumented
+* Changed
+* Requires review
+
+---
+
+# 7. Real Documentation Version Management
+
+Replace the current simple documentation version string with a real version-management system.
+
+Support:
+
+* Create version
+* Save version
+* View version
+* Compare versions
+* Restore version
+* Export version
+* Mark version as published
+* Maintain version history
+
+Use semantic versioning:
+
+```text
+MAJOR.MINOR.PATCH
+```
+
+For example:
+
+```text
+1.0.0
+1.1.0
+1.1.1
+2.0.0
+```
+
+Suggested meaning:
+
+* **MAJOR** → major database restructuring
+* **MINOR** → new tables, fields, relationships, or substantial documentation changes
+* **PATCH** → wording corrections, small documentation corrections, typo fixes
+
+Do not automatically force a version number if the user needs to decide it. Allow the user to select the version type and provide a change summary.
+
+---
+
+# 8. Separate Schema Version from Documentation Version
+
+Do not assume that the database schema version and documentation version are the same.
+
+Display them separately.
+
+Example:
+
+```text
+Database Schema: v4.7
+Documentation: v3.2
+Status: Documentation is behind schema
+```
+
+This is important because the SQL schema may change without the documentation being updated.
+
+The system should detect this condition automatically.
+
+---
+
+# 9. Version History
+
+Create a dedicated **Versions** tab.
+
+Display something like:
+
+| Version | Date       | Author | Based On | Status    | Changes      | Actions                 |
+| ------- | ---------- | ------ | -------- | --------- | ------------ | ----------------------- |
+| 3.2.0   | 2026-09-27 | Ahmed  | 3.1.0    | Published | 4 tables     | View / Compare / Export |
+| 3.1.0   | 2026-09-20 | Ahmed  | 3.0.0    | Published | 12 fields    | View / Compare          |
+| 3.0.0   | 2026-09-01 | Ahmed  | 2.4.0    | Archived  | Major update | View / Restore          |
+
+Actions:
+
+* View
+* Compare
+* Restore
+* Export
+
+Avoid immediately deleting historical versions. Prefer immutable historical versions.
+
+---
+
+# 10. Immutable Published Versions
+
+Use the following model:
+
+```text
+Working Copy
+      ↓
+Review
+      ↓
+Save Version
+      ↓
+Published Version
+```
+
+Once a version is published, it should be treated as immutable.
+
+If the user wants to change it:
+
+```text
+Published v2.3
+      ↓
+Create Working Copy
+      ↓
+Modify
+      ↓
+Review
+      ↓
+Publish v2.4
+```
+
+Never silently modify an already published version.
+
+---
+
+# 11. Change Detection
+
+Create a dedicated **Changes** tab.
+
+The application should detect at least three types of comparison:
+
+### A. SQL Schema vs Documentation
+
+Detect:
+
+* New tables
+* Removed tables
+* New fields
+* Removed fields
+* Changed data types
+* Changed constraints
+* New relationships
+* Removed relationships
+* Undocumented fields
+* Missing table descriptions
+* Missing field descriptions
+
+### B. Documentation Version vs Documentation Version
+
+For example:
+
+```text
+v2.1 → v2.2
+```
+
+Show:
+
+```text
++ 2 new tables
++ 7 new fields
+~ 4 modified descriptions
+- 1 removed field
+```
+
+### C. Current Schema vs Selected Documentation Version
+
+This should answer:
+
+> "What has changed in the database since this documentation version was created?"
+
+---
+
+# 12. Visual Change Comparison
+
+Do not display changes only as raw JSON.
+
+Create a human-readable comparison interface.
+
+Example:
+
+```text
+students
+──────────────────────────────
+
+ADDED FIELD
+department_id
+INT
+Foreign Key → departments.id
+
+MODIFIED FIELD
+email
+
+Before:
+VARCHAR(100)
+
+After:
+VARCHAR(255)
+
+DESCRIPTION CHANGE
+
+Before:
+Student email
+
+After:
+Official institutional email address
+```
+
+Use clear visual indicators for:
+
+* Added
+* Removed
+* Modified
+* Unchanged
+* Requires review
+
+Provide filters such as:
+
+* Tables
+* Fields
+* Relationships
+* Descriptions
+* Technical changes
+* Documentation changes
+
+---
+
+# 13. Pending Changes Workflow
+
+Do not automatically overwrite documentation when a schema changes.
+
+Use:
+
+```text
+Detect Changes
+      ↓
+Review Changes
+      ↓
+Accept / Reject
+      ↓
+Update Documentation
+      ↓
+AI Assistance (optional)
+      ↓
+Human Review
+      ↓
+Create New Version
+      ↓
+Publish
+```
+
+For every detected change, allow:
+
+* Accept
+* Reject
+* Ignore
+* Review later
+
+Example:
+
+```text
+NEW FIELD
+students.phone_number
+
+[Accept] [Reject] [Review Later]
+```
+
+---
+
+# 14. Documentation State Management
+
+Every table and field should have a documentation state.
+
+Possible states:
+
+```text
+NEW
+DOCUMENTED
+MODIFIED
+REVIEW REQUIRED
+OBSOLETE
+```
+
+Use appropriate badges and filtering.
+
+For example:
+
+```text
+students
+[DOCUMENTED]
+
+courses
+[REVIEW REQUIRED]
+
+legacy_students
+[OBSOLETE]
+```
+
+---
+
+# 15. Review Metadata
+
+Maintain documentation metadata such as:
+
+```json
+{
+  "createdBy": "Ahmed Omara",
+  "createdAt": "...",
+  "lastModifiedBy": "Ahmed Omara",
+  "lastModifiedAt": "...",
+  "reviewedBy": "...",
+  "reviewedAt": "..."
+}
+```
+
+The user interface should expose this information where appropriate.
+
+---
+
+# 16. Improved JSON Documentation Format
+
+Use a structured JSON model similar to:
+
+```json
+{
+  "documentation": {
+    "id": "university-sis",
+    "name": "University SIS",
+    "currentVersion": "2.3.0"
+  },
+
+  "version": {
+    "number": "2.3.0",
+    "type": "minor",
+    "createdAt": "2026-09-27T10:00:00Z",
+    "createdBy": "Ahmed Omara",
+    "basedOn": "2.2.0",
+    "status": "published",
+    "changeSummary": "Added student academic information"
+  },
+
+  "schema": {
+    "database": "University SIS",
+    "schemaVersion": "4.7",
+    "schemaHash": "...",
+    "sourceFile": "sis_schema.sql"
+  },
+
+  "tables": []
+}
+```
+
+Maintain backward compatibility with the existing JSON format whenever possible.
+
+The import mechanism should detect older documentation versions and migrate them to the latest internal format.
+
+---
+
+# 17. Documentation Import/Export
+
+Create a dedicated **Import / Export** workspace.
+
+Support:
+
+### Import
+
+* SQL schema
+* Documentation JSON
+* Previous documentation version
+* Documentation package
+
+### Export
+
+* JSON
+* Markdown
+* HTML
+* CSV Data Dictionary
+* SQL comments
+* PDF if feasible
+* Complete documentation package
+
+The JSON export must remain suitable for later re-import.
+
+---
+
+# 18. Documentation Package
+
+Provide an optional portable package concept such as:
+
+```text
+University-SIS-Documentation-v2.3.0/
+│
+├── manifest.json
+├── schema.sql
+├── documentation.json
+├── changes.json
+├── version-history.json
+├── README.md
+└── html/
+    └── index.html
+```
+
+Since the application is currently client-side, implement this using browser-compatible download mechanisms such as ZIP generation if a suitable client-side library is already available or can safely be embedded.
+
+---
+
+# 19. AI Assistant Enhancement
+
+Keep the current AI Assistant but change its role from simply generating descriptions to becoming a documentation assistant.
+
+AI actions should include:
+
+* Generate description
+* Improve description
+* Explain table
+* Explain field
+* Explain relationship
+* Detect inconsistent documentation
+* Detect suspicious/missing descriptions
+* Suggest business meaning
+* Suggest examples
+* Summarize table
+* Summarize database
+* Explain schema changes
+* Generate change summary
+* Suggest documentation updates
+
+The AI must **not automatically overwrite documentation**.
+
+Use:
+
+```text
+AI Suggestion
+      ↓
+Human Review
+      ↓
+Accept / Edit / Reject
+      ↓
+Apply
+```
+
+This preserves human control over documentation.
+
+---
+
+# 20. AI Context Awareness
+
+When asking the AI to document a field, provide relevant schema context.
+
+For example:
+
+```text
+Database
+Table
+Columns
+Primary Key
+Foreign Keys
+Related Tables
+Existing Description
+Data Type
+Constraints
+```
+
+This should allow the AI to produce more meaningful documentation.
+
+---
+
+# 21. Relationship Documentation
+
+Improve relationship information.
+
+For each relationship display:
+
+```text
+students.department_id
+        ↓
+departments.department_id
+```
+
+Allow documentation such as:
+
+```text
+Relationship Meaning:
+Each student belongs to one academic department.
+```
+
+Show relationships both in:
+
+* ER Diagram
+* Table Documentation
+* Relationship/Impact Analysis
+
+---
+
+# 22. Impact Analysis
+
+Add an **Impact Analysis** feature.
+
+For example, when the user selects:
+
+```text
+students.department_id
+```
+
+show:
+
+```text
+Direct Dependencies
+────────────────────
+departments.department_id
+
+Referenced By
+────────────────────
+student_courses.student_id
+...
+
+Potential Impact
+────────────────────
+Changing this field may affect:
+- Student records
+- Department reports
+- Related queries
+- Foreign-key relationships
+```
+
+The system should base the impact analysis on detected schema relationships rather than inventing dependencies.
+
+---
+
+# 23. Global Search
+
+Add a global search capability.
+
+The user should be able to search:
+
+* Table names
+* Field names
+* Descriptions
+* Relationships
+* Documentation versions
+
+Example:
+
+```text
+Search: department
+```
+
+Results:
+
+```text
+students.department_id
+departments
+courses.department_id
+```
+
+---
+
+# 24. UI/UX Improvements
+
+Modernize the CSS without making the application unnecessarily complicated.
+
+Use:
+
+* Sticky top navigation
+* Professional tab navigation
+* Breadcrumbs
+* Consistent cards
+* Status badges
+* Progress indicators
+* Tooltips
+* Responsive layout
+* Resizable panels where useful
+* Collapsible sidebars
+* Compact/comfortable density options
+* Dark mode
+* Clear primary/secondary actions
+* Confirmation dialogs for destructive actions
+
+Maintain a consistent design system using centralized CSS variables.
+
+Do not sacrifice functionality for visual appearance.
+
+---
+
+# 25. Recommended Layout
+
+Use a layout similar to:
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ Database Documentation System                               │
+│ Database: University SIS    Schema: v4.7    Docs: v3.2     │
+├─────────────────────────────────────────────────────────────┤
+│ Dashboard │ Schema │ ERD │ Documentation │ Changes │        │
+│ Versions │ Import/Export │ AI │ Settings                   │
+├──────────────┬──────────────────────────────────────────────┤
+│ Schema       │                                              │
+│ Explorer     │              Main Workspace                  │
+│              │                                              │
+│ Tables       │                                              │
+│ ├ students   │                                              │
+│ ├ courses    │                                              │
+│ ├ teachers   │                                              │
+│ └ ...        │                                              │
+│              │                                              │
+├──────────────┴──────────────────────────────────────────────┤
+│ Status / Documentation Coverage / Current Version           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+# 26. Persistence
+
+Because the application is currently a single HTML file, initially use browser-side persistence such as **IndexedDB** rather than introducing a backend.
+
+Store:
+
+* Current schema
+* Working documentation
+* Documentation versions
+* Version history
+* User preferences
+* UI state
+
+Design the data layer so that it can later be replaced by a server/API without redesigning the entire application.
+
+---
+
+# 27. Data Model Architecture
+
+Separate the application into logical JavaScript components/classes such as:
+
+```text
+SQLParser
+SchemaManager
+RelationshipManager
+ERD
+DocumentationManager
+DocumentationRepository
+VersionManager
+Comparator
+ChangeManager
+ReviewManager
+DocIO
+AIManager
+SearchManager
+StorageManager
+UIManager
+```
+
+Avoid putting all logic into one large JavaScript block.
+
+Maintain clear separation between:
+
+* SQL/schema analysis
+* Documentation data
+* Version management
+* Comparison
+* AI
+* Storage
+* UI
+
+---
+
+# 28. Backward Compatibility
+
+This is critical.
+
+The current application already contains functionality for:
+
+* SQL parsing
+* ERD
+* Table documentation
+* JSON import/export
+* Schema/documentation comparison
+* AI-assisted documentation
+
+Do not remove these features.
+
+Instead:
+
+> Refactor and extend the existing implementation rather than replacing working functionality with a simplified demo.
+
+Existing JSON documentation should continue to be importable.
+
+---
+
+# 29. Demo Data
+
+Keep or improve the existing sample database.
+
+Use a realistic academic/SIS database example containing tables such as:
+
+```text
+students
+departments
+courses
+instructors
+enrollments
+programs
+```
+
+Create enough relationships to demonstrate:
+
+* ERD
+* Documentation
+* Change detection
+* Version comparison
+* Impact analysis
+* AI documentation
+
+---
+
+# 30. Important Implementation Rules
+
+1. Keep everything inside **one HTML file**:
+
+   * HTML
+   * CSS
+   * JavaScript
+
+2. Do not introduce a backend.
+
+3. Do not remove existing features.
+
+4. Do not break existing SQL parsing.
+
+5. Do not break existing JSON import/export.
+
+6. Maintain compatibility with existing documentation JSON where possible.
+
+7. Published documentation versions should be immutable.
+
+8. Schema version and documentation version must remain separate.
+
+9. Changes should be reviewed before being applied.
+
+10. AI suggestions should require human approval before modifying documentation.
+
+11. Do not fabricate schema relationships or technical metadata.
+
+12. Clearly distinguish automatically detected information from manually entered documentation and AI-generated suggestions.
+
+13. Make the application usable for arbitrary SQL schemas rather than hard-coding it to the demo database.
+
+14. The UI should remain responsive for reasonably large schemas.
+
+---
+
+# 31. Development Approach
+
+Do not simply create a visual mockup.
+
+Implement the functionality.
+
+First analyze the existing HTML application and identify:
+
+* Existing classes
+* Existing data structures
+* Existing event handlers
+* Existing parser
+* Existing documentation model
+* Existing comparator
+* Existing AI functionality
+* Existing import/export mechanisms
+
+Then incrementally enhance the application.
+
+Prioritize:
+
+### Phase 1
+
+UI architecture and Dashboard
+
+### Phase 2
+
+Documentation Workspace
+
+### Phase 3
+
+Version Management
+
+### Phase 4
+
+Change Management and Review
+
+### Phase 5
+
+Advanced AI Assistant
+
+### Phase 6
+
+Persistence and Documentation Packages
+
+---
+
+# 32. Final Product Vision
+
+The final application should feel like a lightweight professional **Database Documentation and Schema Governance Tool**, rather than a simple SQL parser.
+
+The central concept should be:
+
+```text
+             SQL Schema
+                  │
+                  ▼
+          Schema Analysis
+                  │
+          ┌───────┴───────┐
+          ▼               ▼
+        ERD          Documentation
+                          │
+                          ▼
+                  Change Detection
+                          │
+                          ▼
+                    Human Review
+                          │
+                          ▼
+                    AI Assistance
+                          │
+                          ▼
+                 Version Management
+                          │
+                          ▼
+                    Publish/Export
+```
+
+The most important objective is to create a maintainable documentation lifecycle:
+
+**Analyze → Document → Compare → Review → Update → Version → Publish**
+
+Please implement these enhancements directly into the existing single-page HTML application while preserving all current functionality and making the resulting interface professional, modern, extensible, and suitable for real-world database documentation.
