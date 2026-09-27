@@ -1,0 +1,1085 @@
+# Task: Redesign the ER Diagram into a Scalable Schema Map / Focus-Based ERD
+
+You are working on an existing single-file HTML application:
+
+**Database Schema & Documentation Management System**
+
+The current application already contains:
+
+* Dashboard
+* SQL Schema
+* Schema Explorer
+* ER Diagram
+* Documentation
+* Changes
+* Versions
+* Import / Export
+* AI Assistant
+* Settings
+* Global search
+* Dark/light theme
+* Schema parsing
+* Table/column documentation
+* Relationship detection
+* ERD rendering
+* Existing ERD controls such as Fit, Re-layout, inferred relationships, and column visibility
+
+The current ERD is useful for small and medium databases, but it becomes visually complicated and difficult to navigate when the database contains hundreds of tables and relationships.
+
+The goal is **NOT to remove the existing ERD functionality**. Instead, redesign the ERD experience into a scalable **Schema Map + Domain View + Focus Table View**, while preserving the existing application architecture and functionality.
+
+---
+
+# 1. Core Design Principle
+
+Do NOT attempt to make a huge database-wide ERD readable by displaying every table, every column, and every relationship simultaneously.
+
+Instead, implement:
+
+> **Progressive exploration rather than full visualization.**
+
+The user should be able to move through:
+
+```text
+Database
+   ↓
+Domain / Module
+   ↓
+Tables
+   ↓
+Selected Table
+   ↓
+Relationship Neighborhood
+   ↓
+Columns / Details
+```
+
+The full ERD should remain available as an advanced option.
+
+---
+
+# 2. Rename the ERD Concept
+
+The existing:
+
+```text
+🗺️ ER Diagram
+```
+
+should conceptually become:
+
+```text
+🗺️ Schema Map
+```
+
+You may keep the existing internal IDs and JavaScript references where practical to minimize regression risk, but the user-facing interface should present the feature as a scalable **Schema Map**.
+
+Do not unnecessarily rename internal variables/functions if doing so could break existing functionality.
+
+---
+
+# 3. Add Four Visualization Modes
+
+The Schema Map should provide four modes:
+
+```text
+[ Database Map ] [ Domain ] [ Focus Table ] [ Full ERD ]
+```
+
+## Mode A — Database Map
+
+This is the default mode for large databases.
+
+Do NOT display individual tables initially.
+
+Instead, group tables into logical domains/modules.
+
+Example:
+
+```text
+┌──────────────────────┐
+│ 👨‍🎓 STUDENT          │
+│ 38 tables            │
+│ 142 relationships    │
+└──────────────────────┘
+
+          ↕ 18 relations
+
+┌──────────────────────┐
+│ 📚 ACADEMIC          │
+│ 27 tables            │
+│ 96 relationships     │
+└──────────────────────┘
+
+          ↕ 11 relations
+
+┌──────────────────────┐
+│ 📝 EXAMINATION       │
+│ 21 tables            │
+│ 74 relationships     │
+└──────────────────────┘
+```
+
+Each domain should behave as an interactive object.
+
+Clicking a domain should open its Domain View.
+
+---
+
+# 4. Domain View
+
+When the user selects a domain, display only the tables belonging to that domain and the relevant relationships.
+
+Example:
+
+```text
+STUDENT DOMAIN
+
+                 ┌───────────────┐
+                 │    student    │
+                 └───────┬───────┘
+                         │
+            ┌────────────┼────────────┐
+            ▼            ▼            ▼
+      contact_data   student_level  student_class
+            │                         │
+            ▼                         ▼
+      investigation             discipline
+```
+
+Tables outside the selected domain should remain hidden or collapsed.
+
+Provide a clear navigation control:
+
+```text
+← Back to Database Map
+```
+
+---
+
+# 5. Focus Table View
+
+When the user selects a table, provide a dedicated local relationship view.
+
+Example:
+
+```text
+                 ┌─────────────────┐
+                 │ student_level   │
+                 └────────┬────────┘
+                          │
+        ┌─────────────────┴─────────────────┐
+        ▼                                   ▼
+┌─────────────────┐                 ┌─────────────────┐
+│ student         │                 │ student_class   │
+│                 │                 │                 │
+│ PK code         │                 │ PK id           │
+│ name            │                 │ FK student_code │
+│ level_id        │                 │ class_id        │
+└────────┬────────┘                 └─────────────────┘
+         │
+         ▼
+┌─────────────────┐
+│ contact_data    │
+│                 │
+│ PK id           │
+│ FK student_code │
+└─────────────────┘
+```
+
+The selected table must be visually emphasized.
+
+Other tables should be displayed according to relationship depth.
+
+---
+
+# 6. Relationship Depth
+
+Add:
+
+```text
+Depth:
+[ 1 Hop ] [ 2 Hops ] [ 3 Hops ] [ All ]
+```
+
+Meaning:
+
+### 1 Hop
+
+Show only directly related tables.
+
+### 2 Hops
+
+Show direct relationships plus relationships one additional level away.
+
+### 3 Hops
+
+Show three relationship levels.
+
+### All
+
+Show the complete connected neighborhood.
+
+Default:
+
+```text
+2 Hops
+```
+
+Do not automatically display the entire database when Focus Table mode is selected.
+
+---
+
+# 7. Keep Full ERD
+
+The existing full ERD must NOT be removed.
+
+Add:
+
+```text
+[ Full ERD ]
+```
+
+This mode should preserve the existing behavior as much as possible.
+
+It should be intended for:
+
+* Small databases
+* Specific documentation
+* Architecture review
+* Export/printing
+* Advanced users
+
+For large databases, the default should be Database Map.
+
+---
+
+# 8. Replace "Show All Columns" with Column Visibility Levels
+
+The existing:
+
+```text
+Show all columns
+```
+
+is not sufficient for a very large schema.
+
+Replace or extend it with:
+
+```text
+Columns:
+[ Keys Only ▾ ]
+```
+
+Options:
+
+```text
+Keys Only
+Keys + FK
+Important
+All
+```
+
+## Keys Only
+
+Show:
+
+* Primary keys
+* Foreign keys
+
+Example:
+
+```text
+┌─────────────────┐
+│ student         │
+│ PK code         │
+└─────────────────┘
+```
+
+## Keys + FK
+
+Show:
+
+* PK
+* FK
+* Relationship fields
+
+## Important
+
+Show:
+
+* PK
+* FK
+* Unique columns
+* Important documented fields where available
+
+## All
+
+Show every column.
+
+The default should be:
+
+```text
+Keys + FK
+```
+
+Do not use "All columns" as the default in large-schema views.
+
+---
+
+# 9. Schema Explorer Integration
+
+The application already contains a Schema Explorer.
+
+Do NOT create a completely independent table navigation system.
+
+Integrate the new Schema Map with the existing Schema Explorer.
+
+Desired workflow:
+
+```text
+Schema Explorer
+      │
+      │ Select table
+      ▼
+Schema Map
+      │
+      ├── Focus selected table
+      ├── Show relationships
+      ├── Show neighbors
+      └── Expand domain
+```
+
+When the user selects a table from Schema Explorer:
+
+1. Open the Schema Map if necessary.
+2. Switch to Focus Table mode.
+3. Center the selected table.
+4. Highlight it.
+5. Display its relationship neighborhood.
+6. Preserve the current selected table state.
+
+---
+
+# 10. Global Search Integration
+
+The existing global search already searches:
+
+* Tables
+* Fields
+* Documentation
+
+Extend its ERD behavior.
+
+For example, searching:
+
+```text
+student
+```
+
+should provide:
+
+```text
+TABLE
+student
+
+38 columns
+12 relationships
+
+[Open Focus View]
+```
+
+Clicking the result should:
+
+1. Open Schema Map.
+2. Select the table.
+3. Switch to Focus Table mode.
+4. Center the table.
+5. Highlight related tables.
+
+---
+
+# 11. Field Search Integration
+
+Searching for a field such as:
+
+```text
+student_code
+```
+
+should allow the user to see where that field participates in the schema.
+
+Example:
+
+```text
+FIELD
+student_code
+
+Referenced / Used By:
+
+student
+contact_data
+student_level
+student_class
+student_action_log
+...
+```
+
+Selecting one table should open its Focus Table View.
+
+---
+
+# 12. Add a Mini-Map
+
+For Domain View and Focus Table View, provide an optional minimap.
+
+Example:
+
+```text
+┌──────────────────────────────┐
+│                              │
+│        MAIN CANVAS            │
+│                              │
+│        ┌──────┐              │
+│        │TABLE │              │
+│   ┌────┴──────┴────┐         │
+│   │                │         │
+│                              │
+│                    ┌───────┐ │
+│                    │MINIMAP│ │
+│                    │ ┌───┐ │ │
+│                    │ │███│ │ │
+│                    │ └───┘ │ │
+│                    └───────┘ │
+└──────────────────────────────┘
+```
+
+The minimap should represent the larger schema while the main canvas displays only the current region.
+
+If implementing a minimap would introduce significant instability, implement it as a modular optional component rather than changing the existing rendering engine unnecessarily.
+
+---
+
+# 13. Relationship Density
+
+For Database Map mode, show summary information rather than drawing every relationship.
+
+Each domain card should display:
+
+```text
+Tables
+Relationships
+```
+
+Example:
+
+```text
+┌─────────────────────┐
+│ 👨‍🎓 STUDENT          │
+│                     │
+│ 38 Tables           │
+│ 142 Relationships   │
+└─────────────────────┘
+```
+
+Optionally display a simple density indicator:
+
+```text
+Relationship density
+Low / Medium / High
+```
+
+This is descriptive only and should not introduce arbitrary scoring.
+
+---
+
+# 14. Proposed New Toolbar
+
+Redesign the current ERD toolbar into:
+
+```text
+┌──────────────────────────────────────────────────────────────┐
+│ 🔎 Search table/field...                                     │
+│                                                              │
+│ View:                                                       │
+│ [Database Map ▾]                                             │
+│                                                              │
+│ Depth: [2 Hops ▾]                                            │
+│                                                              │
+│ Columns: [Keys + FK ▾]                                       │
+│                                                              │
+│ [Focus] [Expand] [Fit] [Reset]                              │
+└──────────────────────────────────────────────────────────────┘
+```
+
+Recommended controls:
+
+### View
+
+```text
+Database Map
+Domain
+Focus Table
+Full ERD
+```
+
+### Depth
+
+```text
+1 Hop
+2 Hops
+3 Hops
+All
+```
+
+### Columns
+
+```text
+Keys Only
+Keys + FK
+Important
+All
+```
+
+### Actions
+
+```text
+Focus
+Expand
+Fit
+Reset
+```
+
+Preserve existing useful controls where applicable.
+
+---
+
+# 15. Navigation/Breadcrumb
+
+Add a breadcrumb at the top of the canvas.
+
+Example:
+
+```text
+Database
+  › Student Domain
+    › student
+```
+
+Another example:
+
+```text
+Database
+  › Academic
+    › course
+```
+
+Each breadcrumb item should be clickable.
+
+For example:
+
+```text
+Database
+```
+
+returns to Database Map.
+
+```text
+Student Domain
+```
+
+returns to Domain View.
+
+```text
+student
+```
+
+returns to Focus View.
+
+---
+
+# 16. Focused Table Inspector
+
+Continue using the existing table inspection mechanism.
+
+When a table is selected, display an inspector containing:
+
+```text
+student
+
+Columns: 38
+Primary Key: code
+Foreign Keys: 4
+Referenced By: 12
+References: 7
+
+[Open Documentation]
+[Focus]
+[Show Dependencies]
+[Show Dependents]
+```
+
+Do not duplicate the complete Documentation interface inside the ERD.
+
+Use links/actions to open the existing Documentation functionality.
+
+---
+
+# 17. Dependencies / Dependents
+
+For a selected table provide:
+
+```text
+[ Dependencies ] [ Dependents ]
+```
+
+### Dependencies
+
+Tables that the selected table references.
+
+### Dependents
+
+Tables that reference the selected table.
+
+Example:
+
+```text
+student
+
+Dependencies
+ ├── department
+ ├── level
+ └── program
+
+Dependents
+ ├── contact_data
+ ├── student_class
+ ├── student_level
+ ├── discipline
+ └── student_action_log
+```
+
+Clicking a table should move focus to that table.
+
+---
+
+# 18. Avoid Visual Overload
+
+This requirement is critical.
+
+The new Schema Map must:
+
+* Avoid displaying hundreds of table nodes simultaneously.
+* Avoid displaying all columns by default.
+* Avoid displaying every relationship in Database Map mode.
+* Avoid overlapping nodes.
+* Avoid unreadable labels.
+* Avoid excessive edge crossings.
+* Avoid forcing the user to zoom out to an unusable scale.
+
+The goal is **readability and navigation**, not maximum information density.
+
+---
+
+# 19. Automatic Layout
+
+For Domain and Focus modes:
+
+Use an appropriate graph layout that minimizes:
+
+* Edge crossings
+* Node overlap
+* Excessive empty space
+* Long relationship lines
+
+The layout must remain deterministic enough that repeated rendering does not randomly rearrange the entire view.
+
+Preserve manual node movement if the current application supports it.
+
+Do not break existing zoom and pan behavior.
+
+---
+
+# 20. Performance Requirements
+
+The implementation must scale to large schemas.
+
+Test conceptually against:
+
+```text
+50 tables
+100 tables
+250 tables
+500 tables
+1000 tables
+```
+
+The Database Map must remain responsive.
+
+Do not create DOM/SVG elements for hundreds or thousands of relationships when the current view does not require them.
+
+Use progressive rendering where appropriate.
+
+Only render the relationships required for the current view.
+
+---
+
+# 21. Existing Functionality Must Be Preserved
+
+This is an enhancement, NOT a rewrite.
+
+Do not remove or break:
+
+* SQL parsing
+* Schema parsing
+* Dashboard
+* Schema Explorer
+* Documentation
+* Changes
+* Versions
+* Import / Export
+* AI Assistant
+* Settings
+* Global Search
+* Dark mode
+* Existing table documentation
+* Existing relationship detection
+* Existing inferred relationship functionality
+* Existing ERD zoom
+* Existing ERD pan
+* Existing ERD selection
+* Existing table inspection
+* Existing data persistence
+
+Preserve the existing visual design language, CSS variables, cards, buttons, badges, dark theme, and responsive behavior wherever possible.
+
+---
+
+# 22. Backward Compatibility
+
+Existing databases loaded into the application must continue to work.
+
+Do not require users to manually classify every table before they can use the ERD.
+
+If explicit domain/module metadata does not exist, automatically generate provisional groups.
+
+Possible grouping signals include:
+
+* Existing schema/database naming
+* Table name prefixes
+* Common naming patterns
+* Foreign-key connectivity
+* Existing metadata
+
+However:
+
+**Do not invent authoritative business meanings.**
+
+If automatic grouping is uncertain, label groups generically, for example:
+
+```text
+Module 1
+Module 2
+Module 3
+```
+
+and allow the user to rename or reorganize them.
+
+---
+
+# 23. Domain Management
+
+Provide an optional domain management mechanism.
+
+The user should be able to:
+
+```text
+Create Domain
+Rename Domain
+Move Table to Domain
+Remove Table from Domain
+Collapse Domain
+Expand Domain
+```
+
+But this must remain optional.
+
+The application must continue working even if the user never creates explicit domains.
+
+---
+
+# 24. Visual Hierarchy
+
+Use the existing design language.
+
+Recommended hierarchy:
+
+### Database Map
+
+Large domain cards.
+
+### Domain View
+
+Medium table nodes.
+
+### Focus Table View
+
+Detailed table nodes.
+
+### Full ERD
+
+Existing detailed ERD.
+
+The amount of displayed information should increase as the user moves deeper into the hierarchy.
+
+---
+
+# 25. Example Complete Workflow
+
+A user opens a database containing:
+
+```text
+600 tables
+2,400 relationships
+```
+
+Do NOT show 600 tables.
+
+Instead show:
+
+```text
+DATABASE MAP
+
+┌───────────────┐
+│ STUDENT       │
+│ 84 tables     │
+│ 310 relations │
+└───────────────┘
+
+┌───────────────┐
+│ ACADEMIC      │
+│ 102 tables    │
+│ 420 relations │
+└───────────────┘
+
+┌───────────────┐
+│ EXAMINATION   │
+│ 76 tables     │
+│ 285 relations │
+└───────────────┘
+
+...
+```
+
+User clicks:
+
+```text
+STUDENT
+```
+
+Then:
+
+```text
+STUDENT DOMAIN
+
+student
+student_level
+student_class
+contact_data
+discipline
+...
+```
+
+User clicks:
+
+```text
+student
+```
+
+Then:
+
+```text
+FOCUS: student
+
+             student_level
+                   │
+                   ▼
+contact_data ◀── student ──▶ student_class
+                   │
+                   ▼
+              discipline
+```
+
+This is the desired interaction model.
+
+---
+
+# 26. Important UX Principle
+
+The user should always know:
+
+1. Where they are.
+2. What they are viewing.
+3. How many tables are hidden.
+4. How to return to the larger context.
+5. What relationships are currently displayed.
+6. What the current relationship depth is.
+
+For example:
+
+```text
+Database › Student › student
+
+Showing:
+12 tables
+18 relationships
+
+Depth: 2 hops
+Columns: Keys + FK
+
+23 additional tables hidden
+```
+
+This makes the visualization understandable even for extremely large schemas.
+
+---
+
+# 27. Implementation Strategy
+
+Before modifying the code:
+
+1. Inspect the existing ERD HTML/CSS/JavaScript implementation.
+2. Identify:
+
+   * ERD data model
+   * Table node generation
+   * Relationship generation
+   * Layout engine
+   * Zoom/pan handling
+   * Selection handling
+   * Inspector
+   * Existing toolbar controls
+3. Reuse existing functions wherever possible.
+4. Refactor only where necessary.
+5. Add the new Schema Map as a layer over the existing ERD model.
+6. Keep the Full ERD mode using the existing rendering logic as much as possible.
+
+Do not rewrite the entire application.
+
+---
+
+# 28. Recommended Internal Architecture
+
+Conceptually separate:
+
+```text
+Schema Data
+     │
+     ▼
+Relationship Graph
+     │
+     ├───────────────┐
+     ▼               ▼
+Database Map      ERD Renderer
+     │               │
+     ▼               ▼
+Domain View       Full ERD
+     │
+     ▼
+Focus View
+```
+
+The same underlying schema graph should power all views.
+
+Do not create separate inconsistent data models for each visualization.
+
+---
+
+# 29. Acceptance Criteria
+
+The implementation is successful when:
+
+### Small database
+
+A 20-table database can still use the traditional Full ERD.
+
+### Medium database
+
+A 100-table database can be navigated through Domain and Focus views without visual overload.
+
+### Large database
+
+A 500+ table database opens initially as a manageable Database Map rather than a giant ERD.
+
+### Focus
+
+Selecting one table immediately produces a readable relationship neighborhood.
+
+### Search
+
+Searching for a table or field can directly open the relevant Focus View.
+
+### Columns
+
+The user can control the amount of column information shown.
+
+### Navigation
+
+The user can move:
+
+```text
+Database
+→ Domain
+→ Table
+→ Relationship
+```
+
+and back again.
+
+### Existing features
+
+All existing application features continue to work.
+
+### Performance
+
+Large schemas remain responsive because only the required visualization elements are rendered.
+
+---
+
+# 30. Final Design Goal
+
+The final product should feel less like:
+
+> "A giant ERD drawing tool"
+
+and more like:
+
+> **"An interactive database navigation and architecture map."**
+
+The guiding concept is:
+
+```text
+                  DATABASE
+                     │
+                     ▼
+              ┌─────────────┐
+              │ Schema Map  │
+              └──────┬──────┘
+                     │
+             ┌───────┴───────┐
+             ▼               ▼
+          DOMAIN          SEARCH
+             │               │
+             ▼               ▼
+          TABLE ◀──────── FOCUS
+             │
+             ▼
+       RELATIONSHIPS
+             │
+             ▼
+          COLUMNS
+```
+
+Implement this as an enhancement to the existing application, with **progressive disclosure, focus-based navigation, and preservation of the current Full ERD** as the central design principles.
+
+Do not sacrifice existing functionality merely to simplify the visualization.
