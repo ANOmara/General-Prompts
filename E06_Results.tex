@@ -1,0 +1,60 @@
+% ============================================================
+% Experiment 06 Results (consolidated, auto-generated)
+% Requires: \usepackage{booktabs}; figures resolved from figures/.
+% ============================================================
+
+
+\subsection{Experiment 06: Novelty-filter $\tau$ and the communication Pareto frontier}
+
+\subsubsection{Experimental objective}
+
+Sweep the novelty threshold $\tau$, entropy-code the actually transmitted bases, identify the Pareto-optimal (bits, SSIM) operating points with a knee-point flag, fit per-round exponential decay, and decompose the uplink.
+
+\begin{table}[t]
+\centering
+\caption{E06 \$\textbackslash\{\}tau\$-sweep table on dino\textbackslash\{\}\_ring (F-SIBS\$\_1\$, \$N=16\$, seed 42): transmitted bases, entropy-coded uplink, final SSIM, Pareto/knee flags and decay fits (theory = first-order bound, descriptive).}
+\label{tab:exp06-tau-pareto}
+\begin{tabular}{lrrrrrrrrr}
+\toprule
+tau & n\_bases\_transmitted & entropy\_coded\_uplink\_bits & entropy\_coded\_uplink\_KB & final\_SSIM & rounds\_to\_convergence & pareto\_optimal & knee\_flag & fit\_lambda\_per\_round & theory\_lambda\_per\_round \\
+\midrule
+0.3000 & 246 & 324018.7651 & 39.5531 & 0.7208 & 3 & True & True & 2.7527 & 2.7527 \\
+0.6000 & 263 & 345886.5150 & 42.2225 & 0.7119 & 6 & False & False & 0.9998 & 0.7865 \\
+0.9000 & 416 & 545135.8913 & 66.5449 & 0.7195 & 3 & False & False & 0.3802 & 2.7527 \\
+0.9900 & 729 & 960189.1055 & 117.2106 & 0.7221 & 3 & True & False & 0.0020 & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.75\linewidth]{figures/exp06_tau_pareto_frontier.png}
+\caption{E06 communication Pareto frontier over \$\textbackslash\{\}tau\$ with the knee point flagged (non-dominated filter, algorithmic).}
+\label{fig:exp06-tau-pareto-frontier}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/exp06_transmitted_decay_semilog.png}
+\caption{E06 semi-log transmitted-basis decay per round with exponential fits (\$\textbackslash\{\}lambda\$).}
+\label{fig:exp06-transmitted-decay}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.98\linewidth]{figures/exp06_uplink_composition.png}
+\caption{E06 uplink composition per round and \$\textbackslash\{\}tau\$: novel vs filtered-out candidate bases.}
+\label{fig:exp06-uplink-composition}
+\end{figure}
+
+\subsubsection{Scientific findings}
+
+\paragraph{F-E06-01.} tau=0.30 is Pareto-optimal and the knee point: SSIM 0.7208 (99.6\% of the tau=0.99 maximum) at 39.55 KB (33.8\% of the 117.21 KB uplink). Numerical evidence: EXP6\_DF recorded rows; algorithmic non-dominated filter + chord-distance knee. Interpretation: A low novelty threshold retains essentially all reconstruction quality while eliminating ~2/3 of the uplink.. Limitations: Single run per tau; one scene (dino ring); one variant (F-SIBS\_1).. Supporting: Fig.~\ref{fig:exp06-tau-pareto-frontier}, Table~\ref{tab:exp06-tau-pareto}.
+
+\paragraph{F-E06-02.} The interior thresholds tau=0.60 and tau=0.90 are dominated: more uplink did not yield higher SSIM than tau=0.30 in the recorded run. Numerical evidence: EXP6\_DF: tau=0.60 42.22 KB / SSIM 0.7119; tau=0.90 66.54 KB / SSIM 0.7195 vs tau=0.30 39.55 KB / SSIM 0.7208. Interpretation: The (bits, SSIM) response to tau is non-monotonic; conservative operating points should be taken from the frontier, not from the middle of the grid.. Limitations: n=1 per tau; dispersion unmeasured here.. Supporting: Fig.~\ref{fig:exp06-tau-pareto-frontier}, Table~\ref{tab:exp06-tau-pareto}.
+
+\paragraph{F-E06-03.} Per-round transmitted-basis counts decay across rounds and are overlaid with the first-order theoretical bound; fitted and theoretical lambdas are reported per tau. Numerical evidence: exp6\_tau\_pareto\_table.csv fit columns; semi-log figure. Interpretation: Consistent with the novelty-filter model; reported as descriptive reference, not a theoretical claim.. Limitations: Bound uses the actual cumulative dictionary size; solid-angle argument is first-order.. Supporting: Fig.~\ref{fig:exp06-transmitted-decay}, Table~\ref{tab:exp06-tau-pareto}.
+
+\subsubsection{Limitations}
+
+Single run per $\tau$ (seed 42) on one scene and one variant; the frontier is descriptive and its dispersion is not measured here (multi-trial evidence at $\tau=0.95$ exists in Experiment 05).

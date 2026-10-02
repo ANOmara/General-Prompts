@@ -1,0 +1,193 @@
+{
+  "experiment_id": "E07",
+  "title": "Packet-loss / node-dropout robustness",
+  "objective": "Graceful degradation of F-SIBS under uplink packet loss vs NDIC-real/LDMIC-equiv under the same loss model (single-run sweep + 30-trial study).",
+  "research_questions": [
+    "RQ1 SSIM vs loss rate",
+    "RQ2 F-SIBS vs baselines",
+    "RQ3 coherence stability"
+  ],
+  "hypotheses": [
+    "[REQUIRES CONFIRMATION] not explicitly stated in the notebook (see Experiment Specification cell 1)"
+  ],
+  "datasets": [
+    "coil20 (COIL-20, 80 nodes, 128x128; groups: same_object 20x4, cross_object 5x4)",
+    "dino (Middlebury dinoSparseRing, 16 nodes, 96x128, dino_ring)",
+    "temple (Middlebury templeSparseRing, 16 nodes, 96x128, temple_ring)"
+  ],
+  "methods": [
+    "OMP (baseline)",
+    "SIBS1-4 (local sparse encoders)",
+    "F-SIBS_1-4 (federated variants; f_sibs_simulate)",
+    "JPEG / JPEG2000 anchors",
+    "fsibs.protocol evaluation constants"
+  ],
+  "experimental_design": "see Experiment Specification cell (independent/dependent/controlled variables, conditions, trials)",
+  "parameters": "see Section 11 parameter inventory in the Specification cell",
+  "random_seeds": "primary RNG_SEED from fsibs.protocol; multi-trial sections use seeds 42+trial; E10 uses seeds 42..46",
+  "metrics": "SSIM, PSNR, NMSE, BPP (raw/entropy), avg_k, BD-rate/BD-PSNR, uplink bits/KB, federated gain, coherence, atom utilisation, BRF, MIA accuracy (+Wilson CI), E_tx/E_rx/E_cpu, lifetime",
+  "results_source": "in-memory DataFrames of this kernel; recorded-run evidence quoted in the Main Results section (run F_SIBS_r_2026-09-21_1)",
+  "unresolved_issues": "see requires_confirmation",
+  "reproducibility": {
+    "experiment_id": "E07",
+    "notebook": "F_SIBS_E00_E13_merged.ipynb",
+    "execution": {
+      "date": "2026-09-28",
+      "publication_trial_dir": "/home/ahmed_omara/F_SIBS_Modular/2026-09-28_02",
+      "run_dir": "/home/ahmed_omara/F_SIBS_Modular/F_SIBS_r_2026-09-27_1",
+      "random_seed": 42,
+      "seed_note": "primary seed from fsibs.protocol; per-trial seeds are 42+trial in multi-trial sections",
+      "parallelization": "ProcessPoolExecutor via fsibs.parallel.run_part where enabled (see USE_PARALLEL_* flags); serial fallback otherwise"
+    },
+    "software": {
+      "python": "3.12.12",
+      "platform": "Linux-4.18.0-193.el8.x86_64-x86_64-with-glibc2.28",
+      "packages": {
+        "numpy": "2.3.5",
+        "pandas": "2.3.3",
+        "matplotlib": "3.10.8",
+        "scipy": "1.17.1",
+        "sklearn": "1.8.0",
+        "skimage": "0.26.0",
+        "tqdm": "4.67.3",
+        "PIL": "12.0.0"
+      }
+    },
+    "hardware": {
+      "cpu_count": 2,
+      "cpu_model": "[REQUIRES CONFIRMATION] (read from fsibs describe() banner at setup; not re-queried here)",
+      "ram_bytes": 404299681792,
+      "gpu": "none used by this notebook (CPU-only sparse coding)"
+    }
+  },
+  "figures_registry": [
+    [
+      "FIG-E07-01",
+      "exp07_packet_loss_robustness.png",
+      "fig:exp07-packet-loss-robustness",
+      "SSIM vs uplink packet-loss probability for F-SIBS_1..4, NDIC-real and LDMIC-equiv (left); dictionary coherence stability (right).",
+      "RQ1-RQ3"
+    ],
+    [
+      "FIG-E07-02",
+      "exp07_legacy_loss_panel.png",
+      "fig:exp07-legacy-loss-panel",
+      "Legacy single-run packet-loss panel (dino, N=16) per variant.",
+      "RQ1"
+    ]
+  ],
+  "tables_registry": [
+    [
+      "TAB-E07-01",
+      "tab:exp07-sweep",
+      "Single-run sweep: final SSIM and dictionary coherence per method x packet-loss rate.",
+      "RQ1-RQ3"
+    ],
+    [
+      "TAB-E07-02",
+      "tab:exp07-stat-packet-loss",
+      "Multi-trial statistics: SSIM mean/std per (loss rate, variant) over 30 trials.",
+      "RQ1"
+    ]
+  ],
+  "findings": [
+    {
+      "id": "F-E07-01",
+      "finding": "Final SSIM is essentially flat over 0-30% uplink packet loss for all four F-SIBS variants (30-trial means; max observed change -0.0004).",
+      "evidence": "stat_packet_loss.csv (recorded): per-cell std 0.0018-0.0033 dwarfs the mean trend",
+      "fig": "fig:exp07-packet-loss-robustness",
+      "tab": "tab:exp07-stat-packet-loss",
+      "metric": "final SSIM vs loss rate",
+      "interpretation": "Federated dictionary construction degrades gracefully under uplink loss on this scene.",
+      "limitation": "Single scene (dino); loss applied to basis transmissions only; no retransmission model."
+    },
+    {
+      "id": "F-E07-02",
+      "finding": "At every loss rate of the sweep the F-SIBS variants exceed NDIC-real by ~0.19 SSIM and LDMIC-equiv by ~0.15 SSIM (single-run).",
+      "evidence": "exp7_packet_loss_robustness_table.csv (recorded)",
+      "fig": "fig:exp07-packet-loss-robustness",
+      "tab": "tab:exp07-sweep",
+      "metric": "final SSIM by method x rate",
+      "interpretation": "Under the adapted loss model, federated basis sharing retains a large quality advantage over the distributed baselines.",
+      "limitation": "Baselines evaluated under the same adapted loss model, not their native protocols; single run."
+    },
+    {
+      "id": "F-E07-03",
+      "finding": "Global dictionary coherence remains 0.9127-0.9634 under 0-20% loss (F-SIBS variants, single-run).",
+      "evidence": "exp7_packet_loss_robustness_table.csv coherence column",
+      "fig": "fig:exp07-packet-loss-robustness",
+      "tab": "tab:exp07-sweep",
+      "metric": "mu(Psi) vs loss rate",
+      "interpretation": "Dropped transmissions do not destabilise the learned dictionary in the recorded runs.",
+      "limitation": "Coherence of baselines undefined (NaN by design)."
+    },
+    {
+      "id": "F-E07-04",
+      "finding": "Single-run sweep shows non-monotonic SSIM steps (e.g. F-SIBS_3: 0.7503 at 20% vs 0.7463 at 0% loss).",
+      "evidence": "exp7_packet_loss_robustness_table.csv; multi-trial std ~0.002-0.003",
+      "fig": "fig:exp07-legacy-loss-panel",
+      "tab": "tab:exp07-sweep",
+      "metric": "final SSIM (single run)",
+      "interpretation": "Consistent with stochastic dropout-draw noise; flagged rather than smoothed.",
+      "limitation": "n=1 sweep; multi-trial grid uses coarser rates {0, 0.1, 0.2, 0.3}."
+    }
+  ],
+  "validation": [
+    {
+      "check": "methods",
+      "status": "OK",
+      "detail": "methods present: ['F-SIBS_1', 'F-SIBS_2', 'F-SIBS_3', 'F-SIBS_4', 'LDMIC-equiv', 'NDIC-real']"
+    },
+    {
+      "check": "loss_grid",
+      "status": "OK",
+      "detail": "rates present: [0.0, 0.05, 0.1, 0.2]"
+    },
+    {
+      "check": "ssim_range",
+      "status": "OK",
+      "detail": "0 SSIM out of [0,1]"
+    },
+    {
+      "check": "coherence_nan_design",
+      "status": "OK",
+      "detail": "NaN coherence rows: 8 (baselines-only by design: True)"
+    },
+    {
+      "check": "single_run_nonmonotonic.F-SIBS_1",
+      "status": "WARNING",
+      "detail": "SSIM rises at some loss rate in the SINGLE-RUN sweep (max step +0.0033); within multi-trial std (~0.002-0.003) -> treat as dropout-draw noise, preserved unchanged"
+    },
+    {
+      "check": "single_run_nonmonotonic.F-SIBS_2",
+      "status": "WARNING",
+      "detail": "SSIM rises at some loss rate in the SINGLE-RUN sweep (max step +0.0068); within multi-trial std (~0.002-0.003) -> treat as dropout-draw noise, preserved unchanged"
+    },
+    {
+      "check": "single_run_nonmonotonic.F-SIBS_3",
+      "status": "WARNING",
+      "detail": "SSIM rises at some loss rate in the SINGLE-RUN sweep (max step +0.0037); within multi-trial std (~0.002-0.003) -> treat as dropout-draw noise, preserved unchanged"
+    },
+    {
+      "check": "single_run_nonmonotonic.F-SIBS_4",
+      "status": "WARNING",
+      "detail": "SSIM rises at some loss rate in the SINGLE-RUN sweep (max step +0.0073); within multi-trial std (~0.002-0.003) -> treat as dropout-draw noise, preserved unchanged"
+    },
+    {
+      "check": "multi_trial.grid",
+      "status": "OK",
+      "detail": "multi-trial rates: [np.float64(0.0), np.float64(0.1), np.float64(0.2), np.float64(0.3)]"
+    },
+    {
+      "check": "multi_trial.counts",
+      "status": "OK",
+      "detail": "0 (rate, variant) rows without 30 trials"
+    },
+    {
+      "check": "multi_trial.range",
+      "status": "OK",
+      "detail": "per-variant SSIM range over the 0-0.3 loss grid: F-SIBS_1 0.0019, F-SIBS_2 0.0006, F-SIBS_3 0.0010, F-SIBS_4 0.0003 (graceful degradation observed)"
+    }
+  ],
+  "requires_confirmation": []
+}

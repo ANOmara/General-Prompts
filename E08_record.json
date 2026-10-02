@@ -1,0 +1,197 @@
+{
+  "experiment_id": "E08",
+  "title": "Privacy: membership-inference attack and DP-noise trade-off",
+  "objective": "Conservative privacy assessment: MIA on actually transmitted bases vs chance (per tau), proxy calibration, DP-noise utility cost.",
+  "research_questions": [
+    "RQ1 MIA on transmitted bases vs 0.5",
+    "RQ2 proxy calibration A/B",
+    "RQ3 DP noise utility cost"
+  ],
+  "hypotheses": [
+    "[REQUIRES CONFIRMATION] not explicitly stated in the notebook (see Experiment Specification cell 1)"
+  ],
+  "datasets": [
+    "coil20 (COIL-20, 80 nodes, 128x128; groups: same_object 20x4, cross_object 5x4)",
+    "dino (Middlebury dinoSparseRing, 16 nodes, 96x128, dino_ring)",
+    "temple (Middlebury templeSparseRing, 16 nodes, 96x128, temple_ring)"
+  ],
+  "methods": [
+    "OMP (baseline)",
+    "SIBS1-4 (local sparse encoders)",
+    "F-SIBS_1-4 (federated variants; f_sibs_simulate)",
+    "JPEG / JPEG2000 anchors",
+    "fsibs.protocol evaluation constants"
+  ],
+  "experimental_design": "see Experiment Specification cell (independent/dependent/controlled variables, conditions, trials)",
+  "parameters": "see Section 11 parameter inventory in the Specification cell",
+  "random_seeds": "primary RNG_SEED from fsibs.protocol; multi-trial sections use seeds 42+trial; E10 uses seeds 42..46",
+  "metrics": "SSIM, PSNR, NMSE, BPP (raw/entropy), avg_k, BD-rate/BD-PSNR, uplink bits/KB, federated gain, coherence, atom utilisation, BRF, MIA accuracy (+Wilson CI), E_tx/E_rx/E_cpu, lifetime",
+  "results_source": "in-memory DataFrames of this kernel; recorded-run evidence quoted in the Main Results section (run F_SIBS_r_2026-09-21_1)",
+  "unresolved_issues": "see requires_confirmation",
+  "reproducibility": {
+    "experiment_id": "E08",
+    "notebook": "F_SIBS_E00_E13_merged.ipynb",
+    "execution": {
+      "date": "2026-09-28",
+      "publication_trial_dir": "/home/ahmed_omara/F_SIBS_Modular/2026-09-28_02",
+      "run_dir": "/home/ahmed_omara/F_SIBS_Modular/F_SIBS_r_2026-09-27_1",
+      "random_seed": 42,
+      "seed_note": "primary seed from fsibs.protocol; per-trial seeds are 42+trial in multi-trial sections",
+      "parallelization": "ProcessPoolExecutor via fsibs.parallel.run_part where enabled (see USE_PARALLEL_* flags); serial fallback otherwise"
+    },
+    "software": {
+      "python": "3.12.12",
+      "platform": "Linux-4.18.0-193.el8.x86_64-x86_64-with-glibc2.28",
+      "packages": {
+        "numpy": "2.3.5",
+        "pandas": "2.3.3",
+        "matplotlib": "3.10.8",
+        "scipy": "1.17.1",
+        "sklearn": "1.8.0",
+        "skimage": "0.26.0",
+        "tqdm": "4.67.3",
+        "PIL": "12.0.0"
+      }
+    },
+    "hardware": {
+      "cpu_count": 2,
+      "cpu_model": "[REQUIRES CONFIRMATION] (read from fsibs describe() banner at setup; not re-queried here)",
+      "ram_bytes": 404299681792,
+      "gpu": "none used by this notebook (CPU-only sparse coding)"
+    }
+  },
+  "figures_registry": [
+    [
+      "FIG-E08-01",
+      "exp08_mia_vs_tau.png",
+      "fig:exp08-mia-vs-tau",
+      "MIA accuracy vs tau on transmitted bases (mean +/- std over 30 trials) with chance line and significance markers.",
+      "RQ1"
+    ],
+    [
+      "FIG-E08-02",
+      "exp08_legacy_mia_dp_panels.png",
+      "fig:exp08-legacy-panels",
+      "Legacy panels: MIA proxies A/B with chance line (left); DP sigma vs SSIM/BRF per variant (right).",
+      "RQ2, RQ3"
+    ]
+  ],
+  "tables_registry": [
+    [
+      "TAB-E08-01",
+      "tab:exp08-mia-vs-tau",
+      "MIA-vs-tau table: accuracy mean/std, Wilson CI, t statistic, p-value vs 0.5, significance flag per tau.",
+      "RQ1"
+    ],
+    [
+      "TAB-E08-02",
+      "tab:exp08-stat-mia",
+      "Multi-trial proxy A summary: mean, std, Wilson CI, t, p (stat_mia.csv).",
+      "RQ2"
+    ],
+    [
+      "TAB-E08-03",
+      "tab:exp08-dp",
+      "DP trade-off statistics per (sigma, variant): SSIM/BRF mean/std over 10 trials (stat_dp_tradeoff.csv).",
+      "RQ3"
+    ]
+  ],
+  "findings": [
+    {
+      "id": "F-E08-01",
+      "finding": "A logistic-regression MIA on the statistics of ACTUALLY TRANSMITTED uplink bases is statistically indistinguishable from chance (0.5) at every tau (accuracy 0.4625-0.4792, all p >= 0.1188, 30 trials).",
+      "evidence": "EXP8_DF recorded table; Wilson CIs [0.4005, 0.5422] all contain 0.5",
+      "fig": "fig:exp08-mia-vs-tau",
+      "tab": "tab:exp08-mia-vs-tau",
+      "metric": "MIA test accuracy vs 0.5",
+      "interpretation": "Under this threat model the uplink channel shows no detectable membership leakage; wording bounded accordingly.",
+      "limitation": "One attack family, one scene, one fixed member split; non-significance is not proof of absence."
+    },
+    {
+      "id": "F-E08-02",
+      "finding": "Proxy A (COIL-20 held-out objects, local basis statistics) is borderline: 30-split accuracy 0.559 +/- 0.029 with t-test p < 0.001 but Wilson 95% CI [0.392, 0.726] containing 0.5.",
+      "evidence": "recorded multi-trial output + stat_mia.csv",
+      "fig": "fig:exp08-legacy-panels",
+      "tab": "tab:exp08-stat-mia",
+      "metric": "MIA accuracy (proxy A)",
+      "interpretation": "Weak evidence of leakage for an attacker with access to LOCAL basis statistics; the t-test and the Wilson interval are different estimands and are reported side-by-side. [REQUIRES CONFIRMATION] for paper wording.",
+      "limitation": "Proxy attacks on local statistics, not on intercepted traffic; COIL-20 objects are visually similar."
+    },
+    {
+      "id": "F-E08-03",
+      "finding": "Proxy B (content-shift diagnostic dino-vs-temple) reaches 87.5% test accuracy, confirming the attack pipeline is sensitive when a genuine content difference exists.",
+      "evidence": "recorded single-run output (train 68.8% / test 87.5%)",
+      "fig": "fig:exp08-legacy-panels",
+      "tab": "tab:exp08-stat-mia",
+      "metric": "MIA accuracy (proxy B)",
+      "interpretation": "The chance-level result on transmitted bases reflects the channel, not a broken attacker.",
+      "limitation": "Diagnostic only; not a membership attack in the strict sense."
+    },
+    {
+      "id": "F-E08-04",
+      "finding": "Gaussian DP noise on uploaded bases trades utility for privacy across sigma in [0, 0.15]; SSIM/BRF degrade as sigma grows (10-trial statistics per variant).",
+      "evidence": "stat_dp_tradeoff.csv + legacy DP panel (values not printed inline in the recorded run)",
+      "fig": "fig:exp08-legacy-panels",
+      "tab": "tab:exp08-dp",
+      "metric": "SSIM / BRF vs sigma",
+      "interpretation": "Quantifies the cost of the DP defence; exact table values [REQUIRES CONFIRMATION] from the CSV.",
+      "limitation": "Noise applied to the global dictionary post hoc, not to per-round uploads; no formal (epsilon, delta) DP guarantee."
+    }
+  ],
+  "validation": [
+    {
+      "check": "rows",
+      "status": "OK",
+      "detail": "4 tau conditions"
+    },
+    {
+      "check": "accuracy_range",
+      "status": "OK",
+      "detail": "0 mean accuracies outside [0,1]"
+    },
+    {
+      "check": "trial_counts",
+      "status": "OK",
+      "detail": "0 rows without 30 trials"
+    },
+    {
+      "check": "significance_consistency",
+      "status": "OK",
+      "detail": "0 rows where the flag disagrees with p<0.05"
+    },
+    {
+      "check": "ci_contains_mean",
+      "status": "OK",
+      "detail": "0 rows where Wilson CI excludes the mean (different estimand: pooled test accuracy vs mean-of-accuracies)"
+    },
+    {
+      "check": "chance_level",
+      "status": "OK",
+      "detail": "4/4 tau values statistically indistinguishable from chance (p>=0.05) -- no detectable membership leakage on intercepted bases"
+    },
+    {
+      "check": "proxyA.multitrial",
+      "status": "WARNING",
+      "detail": "mean acc 0.559: t-test vs 0.5 significant (p<0.001) while the recorded Wilson 95% CI [0.392, 0.726] contains 0.5 -- conservative reading required (t-test is on per-trial accuracies; CI is on the pooled binomial test accuracy)"
+    },
+    {
+      "check": "dp.range",
+      "status": "OK",
+      "detail": "0 negative DP SSIM means"
+    }
+  ],
+  "requires_confirmation": [
+    {
+      "id": "E08-PROXYA-TENSION",
+      "issue": "Proxy A: t-test significance vs Wilson CI disagreement (different estimands).",
+      "evidence": "recorded output 'E8 MIA proxy A (30 random splits)'",
+      "action": "author decision on paper wording; both intervals reported"
+    },
+    {
+      "id": "E08-DP-NOT-PRINTED",
+      "issue": "DP trade-off table was saved to stat_dp_tradeoff.csv but not printed inline in the recorded run.",
+      "evidence": "recorded output shows only the figure; CSV exists in FIG_DIR",
+      "action": "re-run prints, or read CSV for exact values"
+    }
+  ]
+}

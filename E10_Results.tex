@@ -1,0 +1,77 @@
+% ============================================================
+% Experiment 10 Results (consolidated, auto-generated)
+% Requires: \usepackage{booktabs}; figures resolved from figures/.
+% ============================================================
+
+
+\subsection{Experiment 10: Server aggregator / clustering ablation}
+
+\subsubsection{Experimental objective}
+
+Compare four server-side aggregation strategies through the unchanged `aggregator` hook (default k-means, mini-batch k-means, subspace-parsimonious surrogate, concatenation oracle) at identical federation settings, and benchmark the server runtime vs $K_{global}$.
+
+\begin{table}[t]
+\centering
+\caption{E10 final SSIM (mean / std / 95\textbackslash\{\}\% CI over 5 seeds) and round-mean coherence per aggregator (dino\textbackslash\{\}\_ring, \$N=16\$, \$K\_\{global\}=16\$, \$\textbackslash\{\}tau=0.95\$).}
+\label{tab:exp10-final-ssim}
+\begin{tabular}{lrrrrr}
+\toprule
+aggregator & n\_runs & final\_SSIM\_mean & final\_SSIM\_std & final\_SSIM\_ci95 & coherence\_round\_mean \\
+\midrule
+kmeans (default) & 5 & 0.7227 & 0.0017 & 0.0015 & 0.9367 \\
+minibatch kmeans & 5 & 0.7224 & 0.0031 & 0.0027 & 0.8990 \\
+subspace-parsimonious & 5 & 0.7207 & 0.0037 & 0.0032 & 0.7787 \\
+concatenation oracle & 5 & 0.7215 & 0.0000 & 0.0000 & 0.9707 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{E10 server aggregation runtime (s) per (aggregator, \$K\_\{global\}\$); single timed call per cell (indicative).}
+\label{tab:exp10-runtime}
+\begin{tabular}{lrrr}
+\toprule
+aggregator & K\_global & server\_runtime\_s & pool\_size \\
+\midrule
+kmeans (default) & 8 & 0.0125 & 245 \\
+kmeans (default) & 16 & 0.0281 & 245 \\
+kmeans (default) & 32 & 0.0565 & 245 \\
+minibatch kmeans & 8 & 0.0090 & 245 \\
+minibatch kmeans & 16 & 0.0100 & 245 \\
+minibatch kmeans & 32 & 0.0110 & 245 \\
+subspace-parsimonious & 8 & 0.0302 & 245 \\
+subspace-parsimonious & 16 & 0.0587 & 245 \\
+subspace-parsimonious & 32 & 0.1817 & 245 \\
+concatenation oracle & 8 & 0.0001 & 245 \\
+concatenation oracle & 16 & 0.0001 & 245 \\
+concatenation oracle & 32 & 0.0001 & 245 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.98\linewidth]{figures/exp10_aggregator_rounds.png}
+\caption{E10 SSIM vs round (left) and dictionary coherence vs round (right) per aggregator.}
+\label{fig:exp10-aggregator-rounds}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/exp10_aggregator_runtime_vs_kglobal.png}
+\caption{E10 server-side aggregation runtime vs \$K\_\{global\}\$ per aggregator.}
+\label{fig:exp10-aggregator-runtime}
+\end{figure}
+
+\subsubsection{Statistical analysis}
+
+With 5 seeds per aggregator, the 95\% CIs (radii 0.0015--0.0032) overlap across a best-to-worst spread of 0.0020: no statistically supported ranking is claimed. The concatenation oracle's zero variance across seeds is flagged [REQUIRES CONFIRMATION]. Runtime cells are single timed calls.
+
+\subsubsection{Scientific findings}
+
+\paragraph{F-E10-01.} Final SSIM is statistically indistinguishable across all four server aggregators (spread 0.0020 vs CI radii 0.0015-0.0032 over 5 seeds). Numerical evidence: E10\_DF recorded table. Interpretation: The federation quality is robust to the server clustering implementation at this scale; k-means default is sufficient.. Limitations: n=5 seeds, one scene, one (N, K\_global, tau) operating point.. Supporting: Fig.~\ref{fig:exp10-aggregator-rounds}, Table~\ref{tab:exp10-final-ssim}.
+
+\paragraph{F-E10-02.} Subspace-parsimonious aggregation lowers dictionary coherence (0.7787 vs 0.8990-0.9707) without improving final SSIM. Numerical evidence: E10\_DF coherence column vs SSIM column. Interpretation: Coherence is not a sufficient proxy for reconstruction quality in this regime.. Limitations: Surrogate implementation of the Ampeliotis-style aggregator (documented in-code).. Supporting: Fig.~\ref{fig:exp10-aggregator-rounds}, Table~\ref{tab:exp10-final-ssim}.
+
+\paragraph{F-E10-03.} Server aggregation runtime grows with K\_global and differs by aggregator (single timed calls; indicative). Numerical evidence: E10\_RUNTIME\_DF + figure (pool = OMP bases of the group). Interpretation: Server cost is measurable but secondary; no repetition-based interval is available. [REQUIRES CONFIRMATION] for timing claims.. Limitations: One timed call per (aggregator, K); no warm-up protocol.. Supporting: Fig.~\ref{fig:exp10-aggregator-runtime}, Table~\ref{tab:exp10-runtime}.

@@ -1,0 +1,187 @@
+{
+  "experiment_id": "E09",
+  "title": "Energy and battery-lifetime analysis",
+  "objective": "Translate measured communication into device energy and battery lifetime under WiFi/BLE/LoRa profiles; preserve the unfavorable tau=0.95 result.",
+  "research_questions": [
+    "RQ1 energy per image by profile/scheme",
+    "RQ2 battery lifetime / extension factor"
+  ],
+  "hypotheses": [
+    "[REQUIRES CONFIRMATION] not explicitly stated in the notebook (see Experiment Specification cell 1)"
+  ],
+  "datasets": [
+    "coil20 (COIL-20, 80 nodes, 128x128; groups: same_object 20x4, cross_object 5x4)",
+    "dino (Middlebury dinoSparseRing, 16 nodes, 96x128, dino_ring)",
+    "temple (Middlebury templeSparseRing, 16 nodes, 96x128, temple_ring)"
+  ],
+  "methods": [
+    "OMP (baseline)",
+    "SIBS1-4 (local sparse encoders)",
+    "F-SIBS_1-4 (federated variants; f_sibs_simulate)",
+    "JPEG / JPEG2000 anchors",
+    "fsibs.protocol evaluation constants"
+  ],
+  "experimental_design": "see Experiment Specification cell (independent/dependent/controlled variables, conditions, trials)",
+  "parameters": "see Section 11 parameter inventory in the Specification cell",
+  "random_seeds": "primary RNG_SEED from fsibs.protocol; multi-trial sections use seeds 42+trial; E10 uses seeds 42..46",
+  "metrics": "SSIM, PSNR, NMSE, BPP (raw/entropy), avg_k, BD-rate/BD-PSNR, uplink bits/KB, federated gain, coherence, atom utilisation, BRF, MIA accuracy (+Wilson CI), E_tx/E_rx/E_cpu, lifetime",
+  "results_source": "in-memory DataFrames of this kernel; recorded-run evidence quoted in the Main Results section (run F_SIBS_r_2026-09-21_1)",
+  "unresolved_issues": "see requires_confirmation",
+  "reproducibility": {
+    "experiment_id": "E09",
+    "notebook": "F_SIBS_E00_E13_merged.ipynb",
+    "execution": {
+      "date": "2026-09-28",
+      "publication_trial_dir": "/home/ahmed_omara/F_SIBS_Modular/2026-09-28_02",
+      "run_dir": "/home/ahmed_omara/F_SIBS_Modular/F_SIBS_r_2026-09-27_1",
+      "random_seed": 42,
+      "seed_note": "primary seed from fsibs.protocol; per-trial seeds are 42+trial in multi-trial sections",
+      "parallelization": "ProcessPoolExecutor via fsibs.parallel.run_part where enabled (see USE_PARALLEL_* flags); serial fallback otherwise"
+    },
+    "software": {
+      "python": "3.12.12",
+      "platform": "Linux-4.18.0-193.el8.x86_64-x86_64-with-glibc2.28",
+      "packages": {
+        "numpy": "2.3.5",
+        "pandas": "2.3.3",
+        "matplotlib": "3.10.8",
+        "scipy": "1.17.1",
+        "sklearn": "1.8.0",
+        "skimage": "0.26.0",
+        "tqdm": "4.67.3",
+        "PIL": "12.0.0"
+      }
+    },
+    "hardware": {
+      "cpu_count": 2,
+      "cpu_model": "[REQUIRES CONFIRMATION] (read from fsibs describe() banner at setup; not re-queried here)",
+      "ram_bytes": 404299681792,
+      "gpu": "none used by this notebook (CPU-only sparse coding)"
+    }
+  },
+  "figures_registry": [
+    [
+      "FIG-E09-01",
+      "exp09_energy_per_image_bars.png",
+      "fig:exp09-energy-bars",
+      "Stacked energy per image (tx/rx/cpu, symlog) per radio profile and scheme.",
+      "RQ1"
+    ],
+    [
+      "FIG-E09-02",
+      "exp09_lifetime_extension.png",
+      "fig:exp09-lifetime-extension",
+      "Battery lifetime vs capture rate per profile with x-factor annotations (F-SIBS vs raw upload).",
+      "RQ2"
+    ],
+    [
+      "FIG-E09-03",
+      "exp09_energy_ssim_pareto.png",
+      "fig:exp09-energy-ssim-pareto",
+      "Energy-vs-SSIM scatter of the three schemes per profile.",
+      "RQ1, RQ2"
+    ]
+  ],
+  "tables_registry": [
+    [
+      "TAB-E09-01",
+      "tab:exp09-energy",
+      "Energy per image per (profile, scheme): tx/rx/cpu/total mJ and scheme SSIM.",
+      "RQ1"
+    ],
+    [
+      "TAB-E09-02",
+      "tab:exp09-lifetime",
+      "Battery lifetime (days) and extension factor vs capture rate per profile (exp9_battery_lifetime.csv).",
+      "RQ2"
+    ]
+  ],
+  "findings": [
+    {
+      "id": "F-E09-01",
+      "finding": "At tau=0.95 F-SIBS consumes MORE energy per image than centralized raw upload under all three radio profiles (1.45x WiFi, 1.51x BLE, 1.45x LoRa); median battery-lifetime extension factor 0.7x.",
+      "evidence": "E9_DF + E9_LIFE_DF recorded tables (measured uplink of the recorded federation run)",
+      "fig": "fig:exp09-energy-bars",
+      "tab": "tab:exp09-energy",
+      "metric": "E_total_mJ_per_image / lifetime extension factor",
+      "interpretation": "Unfavorable result preserved: the tau=0.95 uplink dominates the energy budget exactly as it dominates the bit budget in E04.",
+      "limitation": "Single measured run; order-of-magnitude radio constants; one scene."
+    },
+    {
+      "id": "F-E09-02",
+      "finding": "The energy cost is radio-dominated: E_cpu = 0.001 mJ (negligible), E_rx is 1-4% of E_total; E_tx (uplink) carries >95% of F-SIBS energy.",
+      "evidence": "E9_DF decomposition columns",
+      "fig": "fig:exp09-energy-bars",
+      "tab": "tab:exp09-energy",
+      "metric": "E_tx / E_rx / E_cpu split",
+      "interpretation": "Energy optimisation == uplink-bit optimisation; the levers are tau (E06) and group homogeneity (E05), not compute.",
+      "limitation": "CPU model is proportional-work only (same constant across schemes)."
+    },
+    {
+      "id": "F-E09-03",
+      "finding": "Local-SIBS uses zero radio energy (0.0010 mJ/image CPU-only) but delivers the lowest SSIM (0.7068 vs 0.7214 federated, 1.0 raw upload).",
+      "evidence": "E9_DF SSIM column (same node group)",
+      "fig": "fig:exp09-energy-ssim-pareto",
+      "tab": "tab:exp09-energy",
+      "metric": "energy vs SSIM",
+      "interpretation": "The energy-quality plane has a genuine three-way trade-off; the recorded tau=0.95 point is dominated by raw upload on BOTH axes, which is the honest headline.",
+      "limitation": "SSIM from one run; raw upload assumed lossless."
+    }
+  ],
+  "validation": [
+    {
+      "check": "rows",
+      "status": "OK",
+      "detail": "9 rows = 3 profiles x 3 schemes"
+    },
+    {
+      "check": "energy_nonneg",
+      "status": "OK",
+      "detail": "0 negative energy entries"
+    },
+    {
+      "check": "energy_additivity",
+      "status": "OK",
+      "detail": "E_total == E_tx + E_rx + E_cpu for all rows: True"
+    },
+    {
+      "check": "ssim_range",
+      "status": "OK",
+      "detail": "0 SSIM out of [0,1]"
+    },
+    {
+      "check": "energy_favorability",
+      "status": "WARNING",
+      "detail": "F-SIBS/raw energy ratio = 1.45x on WiFi at tau=0.95 (UNFAVORABLE, >1) -- preserved as a genuine finding; consistent with E04 uplink analysis and addressable via low-tau operation (E06)"
+    },
+    {
+      "check": "ssim_consistency",
+      "status": "OK",
+      "detail": "SSIM constant per scheme across profiles: True"
+    },
+    {
+      "check": "lifetime_positive",
+      "status": "OK",
+      "detail": "0 non-positive lifetimes"
+    },
+    {
+      "check": "extension_factor",
+      "status": "WARNING",
+      "detail": "median lifetime extension factor = 0.7x (<1 means F-SIBS lifetime is SHORTER than raw upload at tau=0.95 -- preserved)"
+    }
+  ],
+  "requires_confirmation": [
+    {
+      "id": "E09-UNFAVORABLE-ENERGY",
+      "issue": "At tau=0.95 the measured uplink makes F-SIBS costlier in energy than raw upload (extension factor 0.7x).",
+      "evidence": "E9_DF recorded table; median extension factor printed as 0.7x",
+      "action": "preserved; paper narrative must report it; low-tau operating points (E06) change the balance"
+    },
+    {
+      "id": "E09-ENERGY-CONSTANTS",
+      "issue": "Radio constants are order-of-magnitude literature values (editable config); absolute energies carry that uncertainty.",
+      "evidence": "ENERGY_PROFILES comment in Cell 1 ('only DIFFERENCES between schemes are meaningful')",
+      "action": "cite the constants as assumptions; do not report absolute joules as measurements"
+    }
+  ]
+}

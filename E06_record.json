@@ -1,0 +1,181 @@
+{
+  "experiment_id": "E06",
+  "title": "Novelty-filter tau and the communication Pareto frontier",
+  "objective": "Identify Pareto-optimal tau operating points on (entropy-coded uplink, final SSIM), knee point, per-round decay fits.",
+  "research_questions": [
+    "RQ1 Pareto-optimal tau",
+    "RQ2 knee point",
+    "RQ3 decay vs first-order bound"
+  ],
+  "hypotheses": [
+    "[REQUIRES CONFIRMATION] not explicitly stated in the notebook (see Experiment Specification cell 1)"
+  ],
+  "datasets": [
+    "coil20 (COIL-20, 80 nodes, 128x128; groups: same_object 20x4, cross_object 5x4)",
+    "dino (Middlebury dinoSparseRing, 16 nodes, 96x128, dino_ring)",
+    "temple (Middlebury templeSparseRing, 16 nodes, 96x128, temple_ring)"
+  ],
+  "methods": [
+    "OMP (baseline)",
+    "SIBS1-4 (local sparse encoders)",
+    "F-SIBS_1-4 (federated variants; f_sibs_simulate)",
+    "JPEG / JPEG2000 anchors",
+    "fsibs.protocol evaluation constants"
+  ],
+  "experimental_design": "see Experiment Specification cell (independent/dependent/controlled variables, conditions, trials)",
+  "parameters": "see Section 11 parameter inventory in the Specification cell",
+  "random_seeds": "primary RNG_SEED from fsibs.protocol; multi-trial sections use seeds 42+trial; E10 uses seeds 42..46",
+  "metrics": "SSIM, PSNR, NMSE, BPP (raw/entropy), avg_k, BD-rate/BD-PSNR, uplink bits/KB, federated gain, coherence, atom utilisation, BRF, MIA accuracy (+Wilson CI), E_tx/E_rx/E_cpu, lifetime",
+  "results_source": "in-memory DataFrames of this kernel; recorded-run evidence quoted in the Main Results section (run F_SIBS_r_2026-09-21_1)",
+  "unresolved_issues": "see requires_confirmation",
+  "reproducibility": {
+    "experiment_id": "E06",
+    "notebook": "F_SIBS_E00_E13_merged.ipynb",
+    "execution": {
+      "date": "2026-09-28",
+      "publication_trial_dir": "/home/ahmed_omara/F_SIBS_Modular/2026-09-28_02",
+      "run_dir": "/home/ahmed_omara/F_SIBS_Modular/F_SIBS_r_2026-09-27_1",
+      "random_seed": 42,
+      "seed_note": "primary seed from fsibs.protocol; per-trial seeds are 42+trial in multi-trial sections",
+      "parallelization": "ProcessPoolExecutor via fsibs.parallel.run_part where enabled (see USE_PARALLEL_* flags); serial fallback otherwise"
+    },
+    "software": {
+      "python": "3.12.12",
+      "platform": "Linux-4.18.0-193.el8.x86_64-x86_64-with-glibc2.28",
+      "packages": {
+        "numpy": "2.3.5",
+        "pandas": "2.3.3",
+        "matplotlib": "3.10.8",
+        "scipy": "1.17.1",
+        "sklearn": "1.8.0",
+        "skimage": "0.26.0",
+        "tqdm": "4.67.3",
+        "PIL": "12.0.0"
+      }
+    },
+    "hardware": {
+      "cpu_count": 2,
+      "cpu_model": "[REQUIRES CONFIRMATION] (read from fsibs describe() banner at setup; not re-queried here)",
+      "ram_bytes": 404299681792,
+      "gpu": "none used by this notebook (CPU-only sparse coding)"
+    }
+  },
+  "figures_registry": [
+    [
+      "FIG-E06-01",
+      "exp06_tau_pareto_frontier.png",
+      "fig:exp06-tau-pareto-frontier",
+      "(entropy-coded uplink bits, final SSIM) for all tau with the Pareto frontier highlighted and tau annotations.",
+      "RQ1, RQ2"
+    ],
+    [
+      "FIG-E06-02",
+      "exp06_transmitted_decay_semilog.png",
+      "fig:exp06-transmitted-decay",
+      "Semi-log transmitted-basis decay per round per tau with exponential fits (lambda).",
+      "RQ3"
+    ],
+    [
+      "FIG-E06-03",
+      "exp06_uplink_composition.png",
+      "fig:exp06-uplink-composition",
+      "Stacked uplink composition per tau: transmitted (novel) vs filtered-out candidates per round.",
+      "RQ3"
+    ]
+  ],
+  "tables_registry": [
+    [
+      "TAB-E06-01",
+      "tab:exp06-tau-pareto",
+      "Tau sweep table: transmitted bases, entropy-coded uplink bits/KB, final SSIM, rounds, Pareto flag, knee flag, decay fits.",
+      "RQ1-RQ3"
+    ]
+  ],
+  "findings": [
+    {
+      "id": "F-E06-01",
+      "finding": "tau=0.30 is Pareto-optimal and the knee point: SSIM 0.7208 (99.6% of the tau=0.99 maximum) at 39.55 KB (33.8% of the 117.21 KB uplink).",
+      "evidence": "EXP6_DF recorded rows; algorithmic non-dominated filter + chord-distance knee",
+      "fig": "fig:exp06-tau-pareto-frontier",
+      "tab": "tab:exp06-tau-pareto",
+      "metric": "entropy-coded uplink bits vs final SSIM",
+      "interpretation": "A low novelty threshold retains essentially all reconstruction quality while eliminating ~2/3 of the uplink.",
+      "limitation": "Single run per tau; one scene (dino ring); one variant (F-SIBS_1)."
+    },
+    {
+      "id": "F-E06-02",
+      "finding": "The interior thresholds tau=0.60 and tau=0.90 are dominated: more uplink did not yield higher SSIM than tau=0.30 in the recorded run.",
+      "evidence": "EXP6_DF: tau=0.60 42.22 KB / SSIM 0.7119; tau=0.90 66.54 KB / SSIM 0.7195 vs tau=0.30 39.55 KB / SSIM 0.7208",
+      "fig": "fig:exp06-tau-pareto-frontier",
+      "tab": "tab:exp06-tau-pareto",
+      "metric": "dominance relation on (bits, SSIM)",
+      "interpretation": "The (bits, SSIM) response to tau is non-monotonic; conservative operating points should be taken from the frontier, not from the middle of the grid.",
+      "limitation": "n=1 per tau; dispersion unmeasured here."
+    },
+    {
+      "id": "F-E06-03",
+      "finding": "Per-round transmitted-basis counts decay across rounds and are overlaid with the first-order theoretical bound; fitted and theoretical lambdas are reported per tau.",
+      "evidence": "exp6_tau_pareto_table.csv fit columns; semi-log figure",
+      "fig": "fig:exp06-transmitted-decay",
+      "tab": "tab:exp06-tau-pareto",
+      "metric": "fit_lambda_per_round / theory_lambda_per_round",
+      "interpretation": "Consistent with the novelty-filter model; reported as descriptive reference, not a theoretical claim.",
+      "limitation": "Bound uses the actual cumulative dictionary size; solid-angle argument is first-order."
+    }
+  ],
+  "validation": [
+    {
+      "check": "rows",
+      "status": "OK",
+      "detail": "4 tau conditions (expected 4: 0.3, 0.6, 0.9, 0.99)"
+    },
+    {
+      "check": "tau_grid",
+      "status": "OK",
+      "detail": "missing tau: none"
+    },
+    {
+      "check": "ssim_range",
+      "status": "OK",
+      "detail": "0 SSIM out of [0,1]"
+    },
+    {
+      "check": "bits_nonneg",
+      "status": "OK",
+      "detail": "0 negative bit counts"
+    },
+    {
+      "check": "bits_vs_bases_consistency",
+      "status": "OK",
+      "detail": "corr(transmitted bases, uplink bits) = 1.0000"
+    },
+    {
+      "check": "pareto_flag",
+      "status": "OK",
+      "detail": "2 Pareto-optimal points"
+    },
+    {
+      "check": "knee_flag",
+      "status": "OK",
+      "detail": "knee at tau=0.30 (on frontier: True)"
+    },
+    {
+      "check": "dominance_note",
+      "status": "WARNING",
+      "detail": "tau=0.90 is dominated by tau=0.30 (more bits AND lower SSIM in the recorded run) -- non-monotonic behaviour preserved as a genuine observation, not an error"
+    },
+    {
+      "check": "replication",
+      "status": "WARNING",
+      "detail": "single run per tau -> [REQUIRES CONFIRMATION] for dispersion"
+    }
+  ],
+  "requires_confirmation": [
+    {
+      "id": "E06-SINGLE-RUN",
+      "issue": "One run per tau (seed=42); run-to-run dispersion of the Pareto frontier is not measured in this notebook.",
+      "evidence": "Section 12 of the contract; single federation run per tau",
+      "action": "treat frontier as descriptive; cf. E05 multi-trial evidence at tau=0.95"
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+% ============================================================
+% Experiment 09 Results (consolidated, auto-generated)
+% Requires: \usepackage{booktabs}; figures resolved from figures/.
+% ============================================================
+
+
+\subsection{Experiment 09: Energy and battery-lifetime analysis}
+
+\subsubsection{Experimental objective}
+
+Translate the communication volumes of a measured federation run into energy per image and battery lifetime under three radio profiles (WiFi / BLE / LoRa), against centralized raw upload and local-only SIBS. Only differences between schemes are meaningful; the radio constants are order-of-magnitude literature values.
+
+\begin{table}[t]
+\centering
+\caption{E09 energy per image (mJ) and scheme SSIM per (radio profile, scheme); bit counts from the measured F-SIBS\$\_1\$ run (dino\textbackslash\{\}\_ring, \$N=16\$, \$\textbackslash\{\}tau=0.95\$, seed 42).}
+\label{tab:exp09-energy}
+\begin{tabular}{lrrrrrr}
+\toprule
+radio\_profile & scheme & E\_tx\_mJ & E\_rx\_mJ & E\_cpu\_mJ & E\_total\_mJ\_per\_image & SSIM \\
+\midrule
+WiFi & Centralized-raw (upload all images) & 9.8304 & 0.0000 & 0.0010 & 9.8314 & 1.0000 \\
+WiFi & F-SIBS (federated, measured uplink) & 13.6704 & 0.6144 & 0.0010 & 14.2858 & 0.7214 \\
+WiFi & Local-SIBS (no communication) & 0.0000 & 0.0000 & 0.0010 & 0.0010 & 0.7068 \\
+BLE & Centralized-raw (upload all images) & 0.9830 & 0.0000 & 0.0010 & 0.9841 & 1.0000 \\
+BLE & F-SIBS (federated, measured uplink) & 1.3670 & 0.1229 & 0.0010 & 1.4909 & 0.7214 \\
+BLE & Local-SIBS (no communication) & 0.0000 & 0.0000 & 0.0010 & 0.0010 & 0.7068 \\
+LoRa & Centralized-raw (upload all images) & 0.1966 & 0.0000 & 0.0010 & 0.1976 & 1.0000 \\
+LoRa & F-SIBS (federated, measured uplink) & 0.2734 & 0.0123 & 0.0010 & 0.2867 & 0.7214 \\
+LoRa & Local-SIBS (no communication) & 0.0000 & 0.0000 & 0.0010 & 0.0010 & 0.7068 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{E09 battery lifetime (days) vs capture rate and the F-SIBS/raw extension factor (\$BATTERY = 40\textbackslash\{\},\$J; constants editable).}
+\label{tab:exp09-lifetime}
+\begin{tabular}{lrrrrr}
+\toprule
+radio\_profile & captures\_per\_day & lifetime\_days\_centralized\_raw & lifetime\_days\_fsibs & lifetime\_days\_local\_sibs & lifetime\_extension\_factor\_fsibs\_vs\_raw \\
+\midrule
+WiFi & 10.0000 & 0.0047 & 0.0032 & 45.2112 & 0.6882 \\
+WiFi & 30.0000 & 0.0016 & 0.0011 & 15.0704 & 0.6882 \\
+WiFi & 60.0000 & 0.0008 & 0.0005 & 7.5352 & 0.6882 \\
+WiFi & 120.0000 & 0.0004 & 0.0003 & 3.7676 & 0.6882 \\
+WiFi & 240.0000 & 0.0002 & 0.0001 & 1.8838 & 0.6882 \\
+WiFi & 480.0000 & 0.0001 & 0.0001 & 0.9419 & 0.6882 \\
+WiFi & 960.0000 & 0.0000 & 0.0000 & 0.4710 & 0.6882 \\
+WiFi & 1440.0000 & 0.0000 & 0.0000 & 0.3140 & 0.6882 \\
+BLE & 10.0000 & 0.0470 & 0.0311 & 45.2112 & 0.6600 \\
+BLE & 30.0000 & 0.0157 & 0.0104 & 15.0704 & 0.6600 \\
+BLE & 60.0000 & 0.0078 & 0.0052 & 7.5352 & 0.6600 \\
+BLE & 120.0000 & 0.0039 & 0.0026 & 3.7676 & 0.6600 \\
+BLE & 240.0000 & 0.0020 & 0.0013 & 1.8838 & 0.6600 \\
+BLE & 480.0000 & 0.0010 & 0.0006 & 0.9419 & 0.6600 \\
+BLE & 960.0000 & 0.0005 & 0.0003 & 0.4710 & 0.6600 \\
+BLE & 1440.0000 & 0.0003 & 0.0002 & 0.3140 & 0.6600 \\
+LoRa & 10.0000 & 0.2343 & 0.1615 & 45.2112 & 0.6893 \\
+LoRa & 30.0000 & 0.0781 & 0.0538 & 15.0704 & 0.6893 \\
+LoRa & 60.0000 & 0.0390 & 0.0269 & 7.5352 & 0.6893 \\
+LoRa & 120.0000 & 0.0195 & 0.0135 & 3.7676 & 0.6893 \\
+LoRa & 240.0000 & 0.0098 & 0.0067 & 1.8838 & 0.6893 \\
+LoRa & 480.0000 & 0.0049 & 0.0034 & 0.9419 & 0.6893 \\
+LoRa & 960.0000 & 0.0024 & 0.0017 & 0.4710 & 0.6893 \\
+LoRa & 1440.0000 & 0.0016 & 0.0011 & 0.3140 & 0.6893 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.98\linewidth]{figures/exp09_energy_per_image_bars.png}
+\caption{E09 stacked energy per image (tx/rx/cpu, symlog) per profile and scheme.}
+\label{fig:exp09-energy-bars}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.85\linewidth]{figures/exp09_lifetime_extension.png}
+\caption{E09 battery lifetime vs capture rate with extension-factor annotations (F-SIBS vs raw upload).}
+\label{fig:exp09-lifetime-extension}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/exp09_energy_ssim_pareto.png}
+\caption{E09 energy-vs-SSIM plane of the three schemes per profile.}
+\label{fig:exp09-energy-ssim-pareto}
+\end{figure}
+
+\subsubsection{Scientific findings}
+
+\paragraph{F-E09-01.} At tau=0.95 F-SIBS consumes MORE energy per image than centralized raw upload under all three radio profiles (1.45x WiFi, 1.51x BLE, 1.45x LoRa); median battery-lifetime extension factor 0.7x. Numerical evidence: E9\_DF + E9\_LIFE\_DF recorded tables (measured uplink of the recorded federation run). Interpretation: Unfavorable result preserved: the tau=0.95 uplink dominates the energy budget exactly as it dominates the bit budget in E04.. Limitations: Single measured run; order-of-magnitude radio constants; one scene.. Supporting: Fig.~\ref{fig:exp09-energy-bars}, Table~\ref{tab:exp09-energy}.
+
+\paragraph{F-E09-02.} The energy cost is radio-dominated: E\_cpu = 0.001 mJ (negligible), E\_rx is 1-4\% of E\_total; E\_tx (uplink) carries >95\% of F-SIBS energy. Numerical evidence: E9\_DF decomposition columns. Interpretation: Energy optimisation == uplink-bit optimisation; the levers are tau (E06) and group homogeneity (E05), not compute.. Limitations: CPU model is proportional-work only (same constant across schemes).. Supporting: Fig.~\ref{fig:exp09-energy-bars}, Table~\ref{tab:exp09-energy}.
+
+\paragraph{F-E09-03.} Local-SIBS uses zero radio energy (0.0010 mJ/image CPU-only) but delivers the lowest SSIM (0.7068 vs 0.7214 federated, 1.0 raw upload). Numerical evidence: E9\_DF SSIM column (same node group). Interpretation: The energy-quality plane has a genuine three-way trade-off; the recorded tau=0.95 point is dominated by raw upload on BOTH axes, which is the honest headline.. Limitations: SSIM from one run; raw upload assumed lossless.. Supporting: Fig.~\ref{fig:exp09-energy-ssim-pareto}, Table~\ref{tab:exp09-energy}.
+
+\subsubsection{Limitations}
+
+Single measured run at $\tau=0.95$; order-of-magnitude radio constants (absolute joules are assumptions, differences are the evidence); the unfavorable 0.7$\times$ extension factor at this operating point is preserved and must be reported alongside the low-$\tau$ remedy of Experiment 06.

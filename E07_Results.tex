@@ -1,0 +1,103 @@
+% ============================================================
+% Experiment 07 Results (consolidated, auto-generated)
+% Requires: \usepackage{booktabs}; figures resolved from figures/.
+% ============================================================
+
+
+\subsection{Experiment 07: Packet-loss / node-dropout robustness}
+
+\subsubsection{Experimental objective}
+
+Quantify the degradation of F-SIBS under stochastic uplink packet loss and compare against NDIC-real and LDMIC-equiv under the same adapted loss model, with a 30-trial multi-trial study.
+
+\begin{table}[t]
+\centering
+\caption{E07 single-run sweep: final SSIM and dictionary coherence per method \$\textbackslash\{\}times\$ packet-loss rate (coherence NaN for the baselines by design).}
+\label{tab:exp07-sweep}
+\begin{tabular}{lrrr}
+\toprule
+packet\_drop\_prob & method & final\_SSIM & final\_dict\_coherence \\
+\midrule
+0.0000 & F-SIBS\_1 & 0.7214 & 0.9127 \\
+0.0000 & F-SIBS\_2 & 0.7423 & 0.9378 \\
+0.0000 & F-SIBS\_3 & 0.7463 & 0.9127 \\
+0.0000 & F-SIBS\_4 & 0.7218 & 0.9189 \\
+0.0000 & NDIC-real & 0.5462 & -- \\
+0.0000 & LDMIC-equiv & 0.5905 & -- \\
+0.0500 & F-SIBS\_1 & 0.7247 & 0.9366 \\
+0.0500 & F-SIBS\_2 & 0.7491 & 0.9366 \\
+0.0500 & F-SIBS\_3 & 0.7500 & 0.9366 \\
+0.0500 & F-SIBS\_4 & 0.7291 & 0.9366 \\
+0.0500 & NDIC-real & 0.5439 & -- \\
+0.0500 & LDMIC-equiv & 0.5890 & -- \\
+0.1000 & F-SIBS\_1 & 0.7230 & 0.9337 \\
+0.1000 & F-SIBS\_2 & 0.7446 & 0.9337 \\
+0.1000 & F-SIBS\_3 & 0.7474 & 0.9337 \\
+0.1000 & F-SIBS\_4 & 0.7249 & 0.9337 \\
+0.1000 & NDIC-real & 0.5364 & -- \\
+0.1000 & LDMIC-equiv & 0.5869 & -- \\
+0.2000 & F-SIBS\_1 & 0.7181 & 0.9634 \\
+0.2000 & F-SIBS\_2 & 0.7436 & 0.9634 \\
+0.2000 & F-SIBS\_3 & 0.7503 & 0.9579 \\
+0.2000 & F-SIBS\_4 & 0.7257 & 0.9579 \\
+0.2000 & NDIC-real & 0.5312 & -- \\
+0.2000 & LDMIC-equiv & 0.5836 & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{E07 multi-trial statistics (30 trials per cell): SSIM mean \$\textbackslash\{\}pm\$ std per (loss rate, variant).}
+\label{tab:exp07-stat-packet-loss}
+\begin{tabular}{lrrrr}
+\toprule
+loss\_rate & variant & n\_trials & SSIM\_mean & SSIM\_std \\
+\midrule
+0.0000 & F-SIBS\_1 & 30 & 0.7182 & 0.0018 \\
+0.0000 & F-SIBS\_2 & 30 & 0.7427 & 0.0023 \\
+0.0000 & F-SIBS\_3 & 30 & 0.7437 & 0.0023 \\
+0.0000 & F-SIBS\_4 & 30 & 0.7215 & 0.0022 \\
+0.1000 & F-SIBS\_1 & 30 & 0.7198 & 0.0027 \\
+0.1000 & F-SIBS\_2 & 30 & 0.7427 & 0.0023 \\
+0.1000 & F-SIBS\_3 & 30 & 0.7443 & 0.0023 \\
+0.1000 & F-SIBS\_4 & 30 & 0.7215 & 0.0020 \\
+0.2000 & F-SIBS\_1 & 30 & 0.7187 & 0.0028 \\
+0.2000 & F-SIBS\_2 & 30 & 0.7422 & 0.0031 \\
+0.2000 & F-SIBS\_3 & 30 & 0.7447 & 0.0024 \\
+0.2000 & F-SIBS\_4 & 30 & 0.7218 & 0.0030 \\
+0.3000 & F-SIBS\_1 & 30 & 0.7179 & 0.0032 \\
+0.3000 & F-SIBS\_2 & 30 & 0.7423 & 0.0033 \\
+0.3000 & F-SIBS\_3 & 30 & 0.7437 & 0.0031 \\
+0.3000 & F-SIBS\_4 & 30 & 0.7215 & 0.0029 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.98\linewidth]{figures/exp07_packet_loss_robustness.png}
+\caption{E07 SSIM vs uplink packet-loss probability (left) and dictionary-coherence stability (right).}
+\label{fig:exp07-packet-loss-robustness}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.7\linewidth]{figures/exp07_legacy_loss_panel.png}
+\caption{E07 legacy single-run packet-loss panel (dino, \$N=16\$).}
+\label{fig:exp07-legacy-loss-panel}
+\end{figure}
+
+\subsubsection{Statistical analysis}
+
+The multi-trial study reports mean $\pm$ std over 30 independent dropout draws per (rate, variant); the SSIM profile is flat over 0--30\% loss (max observed mean change $-0.0004$) and the per-cell std (0.002--0.003) exceeds the trend. The notebook defines no formal degradation test; 'graceful degradation' is therefore reported as an observed description.
+
+\subsubsection{Scientific findings}
+
+\paragraph{F-E07-01.} Final SSIM is essentially flat over 0-30\% uplink packet loss for all four F-SIBS variants (30-trial means; max observed change -0.0004). Numerical evidence: stat\_packet\_loss.csv (recorded): per-cell std 0.0018-0.0033 dwarfs the mean trend. Interpretation: Federated dictionary construction degrades gracefully under uplink loss on this scene.. Limitations: Single scene (dino); loss applied to basis transmissions only; no retransmission model.. Supporting: Fig.~\ref{fig:exp07-packet-loss-robustness}, Table~\ref{tab:exp07-stat-packet-loss}.
+
+\paragraph{F-E07-02.} At every loss rate of the sweep the F-SIBS variants exceed NDIC-real by ~0.19 SSIM and LDMIC-equiv by ~0.15 SSIM (single-run). Numerical evidence: exp7\_packet\_loss\_robustness\_table.csv (recorded). Interpretation: Under the adapted loss model, federated basis sharing retains a large quality advantage over the distributed baselines.. Limitations: Baselines evaluated under the same adapted loss model, not their native protocols; single run.. Supporting: Fig.~\ref{fig:exp07-packet-loss-robustness}, Table~\ref{tab:exp07-sweep}.
+
+\paragraph{F-E07-03.} Global dictionary coherence remains 0.9127-0.9634 under 0-20\% loss (F-SIBS variants, single-run). Numerical evidence: exp7\_packet\_loss\_robustness\_table.csv coherence column. Interpretation: Dropped transmissions do not destabilise the learned dictionary in the recorded runs.. Limitations: Coherence of baselines undefined (NaN by design).. Supporting: Fig.~\ref{fig:exp07-packet-loss-robustness}, Table~\ref{tab:exp07-sweep}.
+
+\paragraph{F-E07-04.} Single-run sweep shows non-monotonic SSIM steps (e.g. F-SIBS\_3: 0.7503 at 20\% vs 0.7463 at 0\% loss). Numerical evidence: exp7\_packet\_loss\_robustness\_table.csv; multi-trial std ~0.002-0.003. Interpretation: Consistent with stochastic dropout-draw noise; flagged rather than smoothed.. Limitations: n=1 sweep; multi-trial grid uses coarser rates \{0, 0.1, 0.2, 0.3\}.. Supporting: Fig.~\ref{fig:exp07-legacy-loss-panel}, Table~\ref{tab:exp07-sweep}.

@@ -1,0 +1,59 @@
+% ============================================================
+% Experiment 08 Results (consolidated, auto-generated)
+% Requires: \usepackage{booktabs}; figures resolved from figures/.
+% ============================================================
+
+
+\subsection{Experiment 08: Privacy -- membership inference and DP-noise trade-off}
+
+\subsubsection{Experimental objective}
+
+Bound the privacy claims of F-SIBS by what its significance tests show: a logistic-regression MIA on the ACTUALLY TRANSMITTED uplink bases per $\tau$ (one-sample $t$-test vs chance 0.5, Wilson 95\% CIs), proxy attacks for calibration, and the Gaussian DP-noise utility trade-off.
+
+\begin{table}[t]
+\centering
+\caption{E08 MIA accuracy on intercepted uplink bases vs \$\textbackslash\{\}tau\$ (dino ring, members = nodes 0--7; 30 trials; \$H\_0\$: accuracy \$=0.5\$).}
+\label{tab:exp08-mia-vs-tau}
+\begin{tabular}{lrrrrrrrr}
+\toprule
+tau & n\_trials & MIA\_accuracy\_mean & MIA\_accuracy\_std & wilson\_ci\_low & wilson\_ci\_high & p\_value\_vs\_0.5 & significant\_at\_0.05 & marker \\
+\midrule
+0.3000 & 30 & 0.4667 & 0.1225 & 0.4046 & 0.5298 & 0.1470 & False & ns \\
+0.6000 & 30 & 0.4792 & 0.1275 & 0.4168 & 0.5422 & 0.3781 & False & ns \\
+0.9000 & 30 & 0.4750 & 0.1369 & 0.4127 & 0.5381 & 0.3256 & False & ns \\
+0.9900 & 30 & 0.4625 & 0.1278 & 0.4005 & 0.5257 & 0.1188 & False & ns \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.75\linewidth]{figures/exp08_mia_vs_tau.png}
+\caption{E08 MIA accuracy vs \$\textbackslash\{\}tau\$ on transmitted bases (mean \$\textbackslash\{\}pm\$ std over 30 trials), chance line and significance markers.}
+\label{fig:exp08-mia-vs-tau}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.95\linewidth]{figures/exp08_legacy_mia_dp_panels.png}
+\caption{E08 legacy panels: MIA proxies A/B with the chance line (left); DP noise \$\textbackslash\{\}sigma\$ vs SSIM/BRF per variant (right).}
+\label{fig:exp08-legacy-panels}
+\end{figure}
+
+\subsubsection{Statistical analysis}
+
+At every $\tau$ the attack accuracy is NOT significantly different from 0.5 (all $p \geq 0.1188$, marker ns, $n=30$); Wilson 95\% CIs of the pooled test accuracy all contain 0.5. Proxy A (30 random COIL-20 splits) yields $0.559 \pm 0.029$ with $p<0.001$ on the $t$-test while its Wilson CI $[0.392, 0.726]$ contains 0.5 -- the two intervals are different estimands and are reported side-by-side; the conservative reading is retained. Proxy B (content-shift diagnostic) reaches 0.875 test accuracy, confirming attacker sensitivity.
+
+\subsubsection{Scientific findings}
+
+\paragraph{F-E08-01.} A logistic-regression MIA on the statistics of ACTUALLY TRANSMITTED uplink bases is statistically indistinguishable from chance (0.5) at every tau (accuracy 0.4625-0.4792, all p >= 0.1188, 30 trials). Numerical evidence: EXP8\_DF recorded table; Wilson CIs [0.4005, 0.5422] all contain 0.5. Interpretation: Under this threat model the uplink channel shows no detectable membership leakage; wording bounded accordingly.. Limitations: One attack family, one scene, one fixed member split; non-significance is not proof of absence.. Supporting: Fig.~\ref{fig:exp08-mia-vs-tau}, Table~\ref{tab:exp08-mia-vs-tau}.
+
+\paragraph{F-E08-02.} Proxy A (COIL-20 held-out objects, local basis statistics) is borderline: 30-split accuracy 0.559 +/- 0.029 with t-test p < 0.001 but Wilson 95\% CI [0.392, 0.726] containing 0.5. Numerical evidence: recorded multi-trial output + stat\_mia.csv. Interpretation: Weak evidence of leakage for an attacker with access to LOCAL basis statistics; the t-test and the Wilson interval are different estimands and are reported side-by-side. [REQUIRES CONFIRMATION] for paper wording.. Limitations: Proxy attacks on local statistics, not on intercepted traffic; COIL-20 objects are visually similar.. Supporting: Fig.~\ref{fig:exp08-legacy-panels}, Table~\ref{tab:exp08-stat-mia}.
+
+\paragraph{F-E08-03.} Proxy B (content-shift diagnostic dino-vs-temple) reaches 87.5\% test accuracy, confirming the attack pipeline is sensitive when a genuine content difference exists. Numerical evidence: recorded single-run output (train 68.8\% / test 87.5\%). Interpretation: The chance-level result on transmitted bases reflects the channel, not a broken attacker.. Limitations: Diagnostic only; not a membership attack in the strict sense.. Supporting: Fig.~\ref{fig:exp08-legacy-panels}, Table~\ref{tab:exp08-stat-mia}.
+
+\paragraph{F-E08-04.} Gaussian DP noise on uploaded bases trades utility for privacy across sigma in [0, 0.15]; SSIM/BRF degrade as sigma grows (10-trial statistics per variant). Numerical evidence: stat\_dp\_tradeoff.csv + legacy DP panel (values not printed inline in the recorded run). Interpretation: Quantifies the cost of the DP defence; exact table values [REQUIRES CONFIRMATION] from the CSV.. Limitations: Noise applied to the global dictionary post hoc, not to per-round uploads; no formal (epsilon, delta) DP guarantee.. Supporting: Fig.~\ref{fig:exp08-legacy-panels}, Table~\ref{tab:exp08-dp}.
+
+\subsubsection{Limitations and items requiring confirmation}
+
+One attack family / scene / member split; non-significance is not proof of absence. The DP trade-off table (stat\_dp\_tradeoff.csv) was saved but not printed inline in the recorded run [REQUIRES CONFIRMATION for exact values]. Noise is applied post hoc to the global dictionary; no formal $(\varepsilon, \delta)$-DP guarantee is claimed.
