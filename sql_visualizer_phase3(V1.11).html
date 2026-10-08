@@ -1,0 +1,2833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SQL Join Visualizer</title>
+<style>
+  :root{
+    --bg:#070b16; --panel:#0e1527; --panel-2:#121a2f; --line:#22304f;
+    --text:#e6ecff; --muted:#8b9ac4; --accent:#5eead4; --accent2:#818cf8;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color:var(--text);
+    background:
+      radial-gradient(1100px 700px at 15% -10%, #1b2a4a 0%, transparent 60%),
+      radial-gradient(900px 600px at 95% 0%, #2a1b4a 0%, transparent 55%),
+      linear-gradient(180deg,#080d1a 0%, #05080f 100%);
+    background-attachment: fixed;
+  }
+  .app{ display:grid; grid-template-columns: minmax(340px, 460px) 1fr; height:100vh; }
+
+  /* editor pane */
+  .editor-pane{
+    display:flex; flex-direction:column; min-height:0; position:relative;
+    border-right:1px solid var(--line); background: rgba(9,14,28,.65); backdrop-filter: blur(10px);
+  }
+  .brand{ display:flex; align-items:center; gap:10px; padding:16px 18px 12px; }
+  .logo{
+    width:30px;height:30px;border-radius:9px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    display:grid;place-items:center;font-size:15px;color:#06111f;font-weight:800;
+    box-shadow:0 0 22px -6px var(--accent);
+  }
+  .brand h1{font-size:15px;margin:0;letter-spacing:.2px}
+  .brand p{margin:0;font-size:11px;color:var(--muted)}
+
+  .upload-bar{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:0 18px 12px; }
+  .upload-btn{
+    font-size:11.5px; padding:6px 12px; border-radius:8px; cursor:pointer;
+    background:linear-gradient(135deg,rgba(94,234,212,.15),rgba(129,140,248,.15));
+    border:1px solid rgba(94,234,212,.4); color:#a7f3e6; font-family:inherit;
+    transition:.15s; display:inline-flex; align-items:center; gap:6px;
+  }
+  .upload-btn:hover{
+    background:linear-gradient(135deg,rgba(94,234,212,.28),rgba(129,140,248,.28));
+    border-color:rgba(94,234,212,.7);
+  }
+  .upload-btn:active{transform:translateY(1px)}
+  .reset-link{ font-size:11px; color:var(--muted); cursor:pointer;
+    text-decoration:underline; text-decoration-color:rgba(139,154,196,.4); }
+  .reset-link:hover{color:var(--accent)}
+  .upload-info{
+    font-size:11px;color:var(--muted);font-family:var(--mono);
+    flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+
+  /* ---- NEW: schema summary panel ---- */
+  .schema-summary{
+    margin: 0 18px 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba(94,234,212,.08), rgba(129,140,248,.06));
+    border: 1px solid rgba(94,234,212,.25);
+    display: none;
+  }
+  .schema-summary.show{ display: block }
+  .ss-title{
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; font-weight: 700; color: #a7f3e6;
+    margin-bottom: 8px;
+  }
+  .ss-title .ss-check{ color: #5eead4; font-size: 14px }
+  .ss-title .ss-name{
+    font-family: var(--mono); font-size: 10.5px; color: var(--muted);
+    font-weight: 400; margin-left: auto; max-width: 55%; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap;
+  }
+  .ss-grid{
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
+    gap: 6px;
+  }
+  .ss-item{
+    display: flex; flex-direction: column; align-items: center;
+    padding: 5px 4px; border-radius: 7px;
+    background: rgba(8,13,25,.5);
+    border: 1px solid rgba(34,48,79,.6);
+  }
+  .ss-num{ font-family: var(--mono); font-size: 14px; font-weight: 700; color: #dbe6ff; }
+  .ss-lbl{ font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .schema-summary.is-error{
+    background: rgba(248,113,113,.1);
+    border-color: rgba(248,113,113,.4);
+  }
+  .schema-summary.is-error .ss-title{ color: #fca5a5 }
+  .schema-summary.is-error .ss-check{ color: #fca5a5 }
+
+  .segments-bar{ padding: 0 18px 10px; display: none; }
+  .segments-bar.show{ display: block }
+  .segments-title{
+    font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+    margin-bottom:6px; display:flex; align-items:center; gap:8px;
+  }
+  .segments-title::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+  .seg-count{ font-family:var(--mono); letter-spacing:0; text-transform:none; color:var(--accent); font-size:10.5px; }
+  .segments-list{ display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; scrollbar-width: thin; }
+  .segments-list::-webkit-scrollbar{height:6px}
+  .segments-list::-webkit-scrollbar-thumb{background:rgba(139,154,196,.3);border-radius:3px}
+  .seg-chip{
+    flex: 0 0 auto; font-size: 10.5px; padding: 5px 10px; border-radius: 7px; cursor: pointer;
+    background: rgba(244,114,182,.08); border: 1px solid rgba(244,114,182,.28);
+    color: #fbcfe8; white-space: nowrap; transition: .15s;
+    max-width: 340px; overflow: hidden; text-overflow: ellipsis; font-family: inherit;
+  }
+  .seg-chip:hover{ background: rgba(244,114,182,.2); border-color: rgba(244,114,182,.6); color:#fff; }
+  .seg-chip .seg-fk{ color:#fb923c; opacity:.9; margin-right:5px; font-weight:800; font-size:9px; letter-spacing:.08em; }
+
+  .examples{display:flex;flex-wrap:wrap;gap:6px;padding:0 18px 12px}
+  .chip{
+    font-size:11px;padding:5px 10px;border-radius:999px;cursor:pointer;
+    background:rgba(129,140,248,.1);border:1px solid rgba(129,140,248,.28);
+    color:#c7d2fe; transition:.15s;
+  }
+  .chip:hover{background:rgba(129,140,248,.22);border-color:rgba(129,140,248,.6)}
+
+  textarea{
+    flex:1; min-height:200px; margin:0 14px; resize:none;
+    background:#080d19; color:#dbe6ff;
+    border:1px solid var(--line); border-radius:12px;
+    padding:14px; font-family:var(--mono); font-size:13px; line-height:1.65;
+    outline:none; tab-size:2;
+    box-shadow: inset 0 0 40px -20px rgba(94,234,212,.4);
+  }
+  textarea:focus{border-color:rgba(94,234,212,.5)}
+
+  .err{
+    margin:10px 14px 0; padding:9px 12px; border-radius:9px; font-size:12px;
+    background:rgba(248,113,113,.12); border:1px solid rgba(248,113,113,.4); color:#fca5a5;
+    display:none;
+  }
+  .err.show{display:block}
+
+  .hintbar{
+    padding:10px 18px 16px; font-size:11px; color:var(--muted); display:flex;
+    justify-content:space-between; gap:10px; flex-wrap:wrap;
+  }
+  .legend{display:flex;gap:10px;flex-wrap:wrap}
+  .legend span{display:flex;align-items:center;gap:5px}
+  .legend i{width:9px;height:9px;border-radius:50%;display:inline-block}
+  .kbd{
+    font-family:var(--mono); font-size:10px; padding:1px 5px; border-radius:4px;
+    background:rgba(139,154,196,.12); border:1px solid rgba(139,154,196,.28); color:#c7d2fe;
+  }
+
+  /* autocomplete */
+  .ac-popup{
+    position: fixed; min-width: 260px; max-width: 480px;
+    background: #0d1526; border: 1px solid rgba(94,234,212,.35);
+    border-radius: 10px; box-shadow: 0 22px 55px -12px rgba(0,0,0,.95), 0 0 0 1px rgba(94,234,212,.08);
+    z-index: 200; display: none; overflow: hidden; font-family: var(--mono);
+  }
+  .ac-popup.show{ display:block }
+  .ac-list{ max-height: 290px; overflow-y: auto; padding: 4px 0; scrollbar-width: thin; }
+  .ac-list::-webkit-scrollbar{width:8px}
+  .ac-list::-webkit-scrollbar-thumb{background:rgba(139,154,196,.3);border-radius:4px}
+  .ac-item{ display: flex; align-items: center; gap: 10px; padding: 6px 12px; cursor: pointer; font-size: 12px; color: #cbd5f5; }
+  .ac-item:hover, .ac-item.active{ background: linear-gradient(90deg, rgba(94,234,212,.2), rgba(129,140,248,.08)); color: #fff; }
+  .ac-kind{
+    flex: 0 0 auto; font-size: 9px; text-transform: uppercase; letter-spacing: .08em;
+    padding: 1px 6px; border-radius: 999px; font-weight: 800; border: 1px solid; font-family: var(--mono);
+  }
+  .ac-kind.tbl{ color: #5eead4; border-color: rgba(94,234,212,.5); background: rgba(94,234,212,.08) }
+  .ac-kind.col{ color: #818cf8; border-color: rgba(129,140,248,.5); background: rgba(129,140,248,.08) }
+  .ac-kind.kw { color: #fbbf24; border-color: rgba(251,191,36,.5); background: rgba(251,191,36,.08) }
+  .ac-kind.seg{ color: #f472b6; border-color: rgba(244,114,182,.5); background: rgba(244,114,182,.08) }
+  .ac-label{ flex: 1; min-width:0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ac-detail{ flex: 0 0 auto; font-size: 10px; color: var(--muted); margin-left: 6px; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ac-hint{
+    padding: 5px 10px; font-size: 9.5px; color: var(--muted);
+    border-top: 1px solid rgba(34,48,79,.6); background: rgba(8,13,25,.6);
+    display: flex; justify-content: space-between; gap: 6px; letter-spacing:.02em;
+  }
+
+  /* viz */
+  .viz-pane{ overflow:auto; padding:22px 26px 70px; min-height:0; }
+  .section-title{
+    font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted);
+    margin:0 0 14px; display:flex; align-items:center; gap:10px;
+  }
+  .section-title .title-text{white-space:nowrap}
+  .section-title .status{ font-family:var(--mono); font-size:10.5px; letter-spacing:0; text-transform:none; color:var(--muted); opacity:.8; white-space:nowrap; }
+  .section-title .status b{color:var(--accent); font-weight:600}
+  .section-title::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+
+  .canvas{
+    position:relative;
+    display:grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
+    gap: 38px 60px; padding: 12px 4px 8px; margin-bottom: 34px;
+  }
+  #links{position:absolute; inset:0; pointer-events:none; overflow:visible; z-index:0}
+
+  .grid-divider{
+    grid-column: 1 / -1;
+    display: flex; align-items: center; gap: 10px;
+    font-size: 10px; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--accent); padding: 0 2px; margin: 0 0 -22px;
+    font-weight: 600;
+  }
+  .grid-divider::after{ content:''; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(94,234,212,.45), transparent); }
+  .grid-divider .count{ font-family: var(--mono); letter-spacing: 0; text-transform: none; font-weight: 500; color: var(--muted); }
+  .grid-divider-muted{ color: #6b7a9c; margin-top: 6px; }
+  .grid-divider-muted::after{ background: linear-gradient(90deg, rgba(107,122,156,.35), transparent); }
+
+  .table-card{
+    position:relative; z-index:1; border-radius:14px; overflow:hidden;
+    background: linear-gradient(180deg, rgba(30,42,72,.96), rgba(16,24,44,.96));
+    border:1px solid var(--line);
+    box-shadow: 0 16px 34px -18px rgba(0,0,0,.95);
+    animation: pop .28s ease both;
+    transition: opacity .3s ease, filter .3s ease, border-color .25s ease, box-shadow .25s ease;
+  }
+  @keyframes pop{from{opacity:0;transform:translateY(6px) scale(.985)}to{opacity:1;transform:none}}
+  .table-card.is-root{
+    border-color: rgba(94,234,212,.55);
+    box-shadow: 0 0 0 1px rgba(94,234,212,.18), 0 16px 34px -18px rgba(0,0,0,.95);
+  }
+  .table-card.is-unused{ opacity:.42; filter: grayscale(.65) brightness(.82); }
+  .table-card.is-unused:hover{ opacity:.85; filter: grayscale(.15) brightness(.98); }
+
+  .tc-head{
+    display:flex; align-items:center; gap:8px; padding:9px 12px;
+    background: rgba(94,234,212,.07); border-bottom:1px solid var(--line);
+  }
+  .table-card.is-root .tc-head{background: rgba(94,234,212,.14)}
+  .table-card.is-unused .tc-head{background: rgba(139,154,196,.04)}
+  .tc-name{font-size:13px;font-weight:700;letter-spacing:.3px}
+  .tc-alias{
+    font-family:var(--mono); font-size:10px; padding:2px 7px; border-radius:6px;
+    background:rgba(129,140,248,.18); color:#c7d2fe; border:1px solid rgba(129,140,248,.35);
+  }
+  .tc-cols{list-style:none;margin:0;padding:6px 0;max-height:260px;overflow:auto}
+  .tc-cols li{
+    position:relative; display:flex; align-items:center; gap:6px;
+    padding:4px 13px; font-family:var(--mono); font-size:11.5px; color:var(--muted);
+    transition:.18s;
+  }
+  .tc-cols li .col-name{ flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tc-cols li .col-type{font-size:10px;opacity:.5;flex:0 0 auto}
+  .col-badge{
+    flex: 0 0 auto;
+    font-size: 8.5px; font-weight: 800; letter-spacing: .04em;
+    padding: 1px 4px; border-radius: 4px;
+    background: rgba(0,0,0,.3);
+  }
+  .col-badge.pk{ color: #fbbf24; border:1px solid rgba(251,191,36,.4) }
+  .col-badge.fk{ color: #a78bfa; border:1px solid rgba(167,139,250,.4) }
+  .col-badge.uq{ color: #f472b6; border:1px solid rgba(244,114,182,.4) }
+  .col-badge.nn{ color: #5eead4; border:1px solid rgba(94,234,212,.35) }
+  .col-badge.nl{ color: #94a3b8; border:1px solid rgba(148,163,184,.35) }
+  .tc-cols li.is-key{
+    background: linear-gradient(90deg, rgba(129,140,248,.2), rgba(129,140,248,.03));
+    color:#dbe1ff;
+  }
+  .tc-cols li.is-key::before{
+    content:''; position:absolute; left:0; top:50%; transform:translateY(-50%);
+    width:3px; height:64%; border-radius:0 3px 3px 0; background:var(--accent2);
+    box-shadow:0 0 8px var(--accent2);
+  }
+  .tc-empty{padding:10px 13px;font-size:11px;color:#fca5a5;font-family:var(--mono)}
+
+  .join-badge{
+    position:absolute; transform:translate(-50%,-50%);
+    font-size:9.5px; letter-spacing:.08em; font-weight:800; text-transform:uppercase;
+    padding:3px 9px; border-radius:999px; white-space:nowrap;
+    background:#0a1120; color:var(--c); border:1px solid var(--c);
+    box-shadow:0 0 14px -3px var(--c); pointer-events:none; z-index:2;
+  }
+
+  .join-list{display:flex;flex-direction:column;gap:8px;margin-bottom:34px}
+  .join-row{
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+    padding:10px 14px; border-radius:11px;
+    background:rgba(18,26,47,.75); border:1px solid var(--line);
+    font-size:12px;
+  }
+  .jtype{
+    font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+    padding:3px 9px;border-radius:999px;border:1px solid var(--c);color:var(--c);
+    background:rgba(0,0,0,.25); white-space:nowrap;
+  }
+  .jpath{font-family:var(--mono);color:#c7d2fe}
+  .jcond{font-family:var(--mono);color:var(--muted);font-size:11.5px}
+  .jarow{color:var(--muted);opacity:.6}
+
+  .result-wrap{
+    border:1px solid var(--line); border-radius:12px; overflow:auto; max-height:340px;
+    background:rgba(10,16,30,.75);
+  }
+  table.res{border-collapse:collapse; width:100%; font-size:12px; font-family:var(--mono)}
+  table.res th{
+    position:sticky; top:0; text-align:left; padding:8px 12px;
+    background:#131c33; color:#c7d2fe; font-weight:700; font-size:11px;
+    border-bottom:1px solid var(--line); white-space:nowrap;
+  }
+  table.res td{padding:6px 12px; border-bottom:1px solid rgba(34,48,79,.5); color:#c3cee9; white-space:nowrap}
+  table.res tr:hover td{background:rgba(94,234,212,.05)}
+  .null{color:#64748b; font-style:italic}
+  .note{font-size:11.5px;color:var(--muted);margin:10px 2px 0;font-family:var(--mono)}
+  .empty{padding:18px;color:var(--muted);font-size:12px}
+
+  @media (max-width: 980px){
+    .app{grid-template-columns:1fr; height:auto}
+    .editor-pane{border-right:none;border-bottom:1px solid var(--line)}
+    textarea{min-height:180px}
+  }
+
+  /* ===== PHASE 3: Schema Explorer + ER ===== */
+  .mode-toggle{ display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; margin-left:auto; flex:0 0 auto; }
+  .mode-toggle button{ font:inherit; font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; padding:4px 10px; cursor:pointer;
+    background:transparent; color:var(--muted); border:0; }
+  .mode-toggle button.on{ background:rgba(94,234,212,.18); color:#a7f3e6; }
+  .mode-toggle button:not(.on):hover{ color:#fff; }
+  .opt-chip{ font-size:10.5px; padding:3px 9px; border-radius:999px; cursor:pointer; border:1px solid var(--line); color:var(--muted); background:transparent; font-family:inherit; letter-spacing:0; text-transform:none; }
+  .opt-chip.on{ border-color:rgba(129,140,248,.6); color:#c7d2fe; background:rgba(129,140,248,.14); }
+  .er-legend{ display:flex; flex-wrap:wrap; gap:12px; font-size:10.5px; color:var(--muted); margin:-6px 0 14px; }
+  .er-legend span{ display:flex; align-items:center; gap:5px; }
+  .er-legend .sw{ display:inline-block; width:18px; height:0; border-top:2px solid; }
+  .er-legend .sw.dash{ border-top-style:dashed; }
+  .canvas-hint{ grid-column:1/-1; padding:22px; border:1px dashed var(--line); border-radius:12px; color:var(--muted); font-size:12.5px; line-height:1.6; background:rgba(14,21,39,.5); }
+  .canvas-hint b{ color:#c7d2fe; }
+
+  .table-card.is-selected{ border-color:#fbbf24; box-shadow:0 0 0 1px rgba(251,191,36,.35), 0 16px 34px -18px rgba(0,0,0,.95); }
+  .table-card.is-related{ opacity:.6; border-style:dashed; }
+  .table-card .tc-head{ cursor:pointer; }
+  .tc-cols li.c-pk .col-name{ color:#fde68a; font-weight:700; }
+  .tc-cols li.c-fk .col-name{ color:#c4b5fd; }
+  .tc-cols li.c-null .col-name{ font-style:italic; opacity:.85; }
+  .tc-cols li.c-null .col-name::after{ content:' ?'; color:#64748b; font-style:normal; }
+  .col-badge.pk,.col-badge.fk{ font-size:9px; }
+
+  .explorer{ border:1px solid var(--line); border-radius:12px; background:rgba(14,21,39,.7); margin-bottom:30px; overflow:hidden; }
+  .explorer > summary{ list-style:none; cursor:pointer; padding:10px 14px; font-size:12px; font-weight:700; color:#c7d2fe; display:flex; gap:8px; align-items:center; }
+  .explorer > summary::-webkit-details-marker{ display:none; }
+  .explorer > summary::before{ content:'▸'; color:var(--accent); transition:.15s; }
+  .explorer[open] > summary::before{ transform:rotate(90deg); }
+  .ex-body{ display:grid; grid-template-columns: 240px 1fr; min-height:260px; max-height:520px; border-top:1px solid var(--line); }
+  .ex-tree{ border-right:1px solid var(--line); overflow:auto; padding:8px 0; font-size:12px; }
+  .ex-search{ margin:0 10px 8px; width:calc(100% - 20px); background:#080d19; border:1px solid var(--line); color:var(--text); border-radius:7px; padding:5px 8px; font:inherit; font-size:11.5px; outline:none; }
+  .ex-search:focus{ border-color:rgba(94,234,212,.5); }
+  .ex-group{ padding:6px 12px 3px; font-size:9.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); display:flex; justify-content:space-between; }
+  .ex-item{ padding:4px 12px 4px 20px; cursor:pointer; color:#b6c3e6; font-family:var(--mono); font-size:11.5px; display:flex; gap:6px; align-items:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ex-item:hover{ background:rgba(94,234,212,.07); color:#fff; }
+  .ex-item.on{ background:linear-gradient(90deg,rgba(251,191,36,.18),transparent); color:#fff; }
+  .ex-item .n{ margin-left:auto; font-size:10px; color:#64748b; }
+  .ex-item .card-tag{ font-size:9px; color:#a78bfa; border:1px solid rgba(167,139,250,.4); border-radius:4px; padding:0 4px; }
+  .ex-detail{ overflow:auto; padding:14px 16px; font-size:12px; }
+  .ex-detail h3{ margin:0 0 2px; font-size:15px; }
+  .ex-sub{ color:var(--muted); font-size:11px; margin-bottom:10px; }
+  .ex-detail h4{ margin:14px 0 6px; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+  table.ex-cols{ border-collapse:collapse; width:100%; font-family:var(--mono); font-size:11.5px; }
+  table.ex-cols th{ text-align:left; font-size:9.5px; color:var(--muted); font-weight:600; padding:3px 8px; border-bottom:1px solid var(--line); }
+  table.ex-cols td{ padding:4px 8px; border-bottom:1px solid rgba(34,48,79,.45); color:#c3cee9; }
+  .ex-rel{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:6px 10px; margin-bottom:5px; border:1px solid var(--line); border-radius:8px; background:rgba(18,26,47,.7); font-family:var(--mono); font-size:11.5px; cursor:pointer; }
+  .ex-rel:hover{ border-color:rgba(94,234,212,.5); }
+  .ex-rel .dir{ font-size:9px; letter-spacing:.08em; text-transform:uppercase; padding:1px 6px; border-radius:999px; border:1px solid; font-family:inherit; }
+  .ex-rel .dir.out{ color:#a78bfa; border-color:rgba(167,139,250,.5); }
+  .ex-rel .dir.in{ color:#5eead4; border-color:rgba(94,234,212,.5); }
+  .ex-rel .dir.nm{ color:#f472b6; border-color:rgba(244,114,182,.5); }
+  .ex-rel .card{ margin-left:auto; color:#fbbf24; font-weight:700; }
+  .ex-rel .why{ flex-basis:100%; font-family:ui-sans-serif,system-ui,sans-serif; font-size:11px; color:var(--muted); }
+  .ex-actions{ display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+  .ex-btn{ font:inherit; font-size:11px; padding:5px 11px; border-radius:8px; cursor:pointer; border:1px solid rgba(94,234,212,.4); background:rgba(94,234,212,.1); color:#a7f3e6; }
+  .ex-btn:hover{ background:rgba(94,234,212,.22); }
+  .ex-empty{ color:var(--muted); padding:20px; }
+  @media (max-width: 760px){ .ex-body{ grid-template-columns:1fr; max-height:none; } .ex-tree{ border-right:0; border-bottom:1px solid var(--line); max-height:200px; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <section class="editor-pane">
+    <div class="brand">
+      <div class="logo">⌘</div>
+      <div>
+        <h1>SQL Join Visualizer</h1>
+        <p>Write a query · watch the joins build</p>
+      </div>
+    </div>
+
+    <div class="upload-bar">
+      <button class="upload-btn" id="uploadBtn" type="button">
+        <span>📁</span> Load schema.sql
+      </button>
+      <span class="upload-info" id="uploadInfo">Using built-in demo schema</span>
+      <span class="reset-link" id="resetSchema">reset</span>
+      <input type="file" id="schemaFile" accept=".sql,.txt,text/plain" style="display:none">
+    </div>
+
+    <div class="schema-summary" id="schemaSummary"></div>
+
+    <div class="segments-bar" id="segmentsBar">
+      <div class="segments-title">
+        Suggested segments <span class="seg-count" id="segCount"></span>
+      </div>
+      <div class="segments-list" id="segmentsList"></div>
+    </div>
+
+    <div class="examples" id="examples"></div>
+
+    <textarea id="editor" spellcheck="false"
+      placeholder="SELECT ... FROM ... JOIN ... ON ..."></textarea>
+    <div class="err" id="err"></div>
+
+    <div class="hintbar">
+      <div class="legend">
+        <span><i style="background:#5eead4"></i>INNER</span>
+        <span><i style="background:#fbbf24"></i>LEFT</span>
+        <span><i style="background:#a78bfa"></i>RIGHT</span>
+        <span><i style="background:#f472b6"></i>FULL</span>
+        <span><i style="background:#94a3b8"></i>CROSS</span>
+      </div>
+      <div>in‑memory engine · <span class="kbd">Ctrl</span>+<span class="kbd">Space</span> suggestions</div>
+    </div>
+  </section>
+
+  <section class="viz-pane">
+    <details class="explorer" id="explorer" open>
+      <summary>Schema Explorer <span class="status" id="exStatus" style="font-weight:400"></span></summary>
+      <div class="ex-body">
+        <div class="ex-tree" id="exTree"></div>
+        <div class="ex-detail" id="exDetail"></div>
+      </div>
+    </details>
+
+    <div class="section-title">
+      <span class="title-text">ER diagram</span>
+      <span class="status" id="graphStatus"></span>
+      <span class="opt-chip" id="relatedChip" role="button" tabindex="0" title="Also show tables directly linked to the query tables">+ related tables</span>
+      <span class="mode-toggle" id="modeToggle">
+        <button type="button" data-mode="query" class="on" title="Only tables relevant to the current SQL">Query Schema</button>
+        <button type="button" data-mode="full" title="Every table in the uploaded schema">Full Schema</button>
+      </span>
+    </div>
+    <div class="er-legend" id="erLegend">
+      <span><span class="sw" style="border-color:#a78bfa"></span>Declared FK (child ⟶ parent, crow's-foot = many)</span>
+      <span><span class="sw" style="border-color:#5eead4"></span>JOIN written in this query</span>
+      <span><b style="color:#fde68a">PK</b></span><span><b style="color:#c4b5fd">FK</b></span><span><b style="color:#f472b6">UQ</b></span>
+      <span><b style="color:#5eead4">NN</b> not null</span><span><i style="color:#94a3b8">name&nbsp;?</i> nullable</span>
+    </div>
+    <div class="canvas" id="canvas">
+      <svg id="links" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+
+    <div class="section-title"><span class="title-text">Join plan</span></div>
+    <div class="join-list" id="joinList"></div>
+
+    <div class="section-title"><span class="title-text">Result preview</span></div>
+    <div class="result-wrap" id="resultWrap"></div>
+    <div class="note" id="resultNote"></div>
+  </section>
+</div>
+
+<div class="ac-popup" id="autocomplete">
+  <div class="ac-list"></div>
+  <div class="ac-hint">
+    <span>↑↓ navigate · Tab / Enter insert · Esc dismiss</span>
+    <span id="acCount"></span>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   1. SCHEMA MODEL  (Phase 2: richer metadata)
+   ------------------------------------------------------------
+   SCHEMA[key] = {
+     name,                                    // original table name
+     columns: [ { name, type, nullable, default,
+                  isPrimaryKey, isUnique, autoIncrement } ],
+     primaryKeys: [colName, ...],             // composite aware
+     foreignKeys: [ { from, toTable, to,
+                      onDelete, onUpdate } ],
+     indexes: [ { name, columns:[..], unique } ],
+     uniqueConstraints: [ [col, ...], ... ],
+   }
+   ============================================================ */
+function col(name, type, opts){
+  opts = opts || {};
+  return {
+    name,
+    type,
+    nullable: opts.nullable !== undefined ? opts.nullable : !opts.pk,
+    default:  opts.default !== undefined ? opts.default : null,
+    isPrimaryKey: !!opts.pk,
+    isUnique:     !!opts.unique,
+    autoIncrement: !!opts.auto
+  };
+}
+
+const DEMO_SCHEMA = {
+  countries: {
+    name: 'countries',
+    columns: [
+      col('id','int',{pk:true}),
+      col('name','text',{nullable:false}),
+      col('code','text',{unique:true}),
+    ],
+    primaryKeys: ['id'],
+    foreignKeys: [],
+    indexes: [],
+    uniqueConstraints: [['code']]
+  },
+  users: {
+    name: 'users',
+    columns: [
+      col('id','int',{pk:true}),
+      col('name','text',{nullable:false}),
+      col('email','text',{nullable:false,unique:true}),
+      col('country_id','int',{nullable:true}),
+    ],
+    primaryKeys: ['id'],
+    foreignKeys: [{ from:'country_id', toTable:'countries', to:'id', onDelete:null, onUpdate:null }],
+    indexes: [],
+    uniqueConstraints: [['email']]
+  },
+  categories: {
+    name: 'categories',
+    columns: [col('id','int',{pk:true}), col('name','text',{nullable:false})],
+    primaryKeys: ['id'],
+    foreignKeys: [], indexes: [], uniqueConstraints: []
+  },
+  products: {
+    name: 'products',
+    columns: [
+      col('id','int',{pk:true}),
+      col('name','text',{nullable:false}),
+      col('category_id','int',{nullable:true}),
+      col('price','numeric',{nullable:false}),
+    ],
+    primaryKeys: ['id'],
+    foreignKeys: [{ from:'category_id', toTable:'categories', to:'id', onDelete:null, onUpdate:null }],
+    indexes: [],
+    uniqueConstraints: []
+  },
+  orders: {
+    name: 'orders',
+    columns: [
+      col('id','int',{pk:true}),
+      col('user_id','int',{nullable:false}),
+      col('status','text',{nullable:false}),
+      col('created_at','date',{nullable:false}),
+    ],
+    primaryKeys: ['id'],
+    foreignKeys: [{ from:'user_id', toTable:'users', to:'id', onDelete:null, onUpdate:null }],
+    indexes: [],
+    uniqueConstraints: []
+  },
+  order_items: {
+    name: 'order_items',
+    columns: [
+      col('id','int',{pk:true}),
+      col('order_id','int',{nullable:false}),
+      col('product_id','int',{nullable:false}),
+      col('quantity','int',{nullable:false}),
+      col('unit_price','numeric',{nullable:false}),
+    ],
+    primaryKeys: ['id'],
+    foreignKeys: [
+      { from:'order_id',   toTable:'orders',   to:'id', onDelete:null, onUpdate:null },
+      { from:'product_id', toTable:'products', to:'id', onDelete:null, onUpdate:null },
+    ],
+    indexes: [],
+    uniqueConstraints: []
+  },
+  payments: {
+    name: 'payments',
+    columns: [
+      col('id','int',{pk:true}),
+      col('order_id','int',{nullable:false}),
+      col('method','text',{nullable:true}),
+      col('amount','numeric',{nullable:false}),
+    ],
+    primaryKeys: ['id'],
+    foreignKeys: [{ from:'order_id', toTable:'orders', to:'id', onDelete:null, onUpdate:null }],
+    indexes: [],
+    uniqueConstraints: []
+  },
+};
+
+const DEMO_DATA = {
+  countries: [
+    {id:1, name:'United States', code:'US'},
+    {id:2, name:'Germany',       code:'DE'},
+    {id:3, name:'Japan',         code:'JP'},
+  ],
+  users: [
+    {id:1, name:'Ada Lovelace',       email:'ada@math.io',   country_id:1},
+    {id:2, name:'Alan Turing',        email:'alan@bombe.uk', country_id:2},
+    {id:3, name:'Grace Hopper',       email:'grace@navy.mil',country_id:1},
+    {id:4, name:'Yukihiro Matsumoto', email:'matz@ruby.jp',  country_id:3},
+  ],
+  categories: [
+    {id:1, name:'Peripherals'},
+    {id:2, name:'Displays'},
+    {id:3, name:'Accessories'},
+  ],
+  products: [
+    {id:1, name:'Mechanical Keyboard', category_id:1, price:120},
+    {id:2, name:'Wireless Mouse',      category_id:1, price:60},
+    {id:3, name:'4K Monitor',          category_id:2, price:300},
+    {id:4, name:'Desk Lamp',           category_id:3, price:25},
+  ],
+  orders: [
+    {id:1, user_id:1, status:'paid',      created_at:'2024-01-05'},
+    {id:2, user_id:1, status:'pending',   created_at:'2024-01-09'},
+    {id:3, user_id:2, status:'paid',      created_at:'2024-01-11'},
+    {id:4, user_id:3, status:'paid',      created_at:'2024-02-02'},
+    {id:5, user_id:4, status:'cancelled', created_at:'2024-02-14'},
+  ],
+  order_items: [
+    {id:1, order_id:1, product_id:1, quantity:2, unit_price:120},
+    {id:2, order_id:1, product_id:3, quantity:1, unit_price:300},
+    {id:3, order_id:3, product_id:2, quantity:1, unit_price:60},
+    {id:4, order_id:4, product_id:1, quantity:3, unit_price:120},
+    {id:5, order_id:4, product_id:4, quantity:2, unit_price:25},
+  ],
+  payments: [
+    {id:1, order_id:1, method:'card',   amount:540},
+    {id:2, order_id:3, method:'paypal', amount:60},
+    {id:3, order_id:4, method:'card',   amount:410},
+  ],
+};
+
+const SCHEMA = {};
+const DATA   = {};
+let RELATIONS = [];              // flat list of resolved FK links
+let SCHEMA_NAME = null;
+let SCHEMA_STATS = null;         // populated by renderSchemaSummary
+
+function rebuildRelations(){
+  RELATIONS = [];
+  for (const key in SCHEMA){
+    const entry = SCHEMA[key];
+    if (!entry.foreignKeys || !entry.foreignKeys.length) continue;
+    for (const fk of entry.foreignKeys){
+      const toKey = String(fk.toTable).toLowerCase();
+      if (!SCHEMA[toKey]) continue;    // target table not in schema → skip
+      RELATIONS.push({
+        fromTable: entry.name || key,
+        fromCol: fk.from,
+        toTable: SCHEMA[toKey].name || toKey,
+        toCol: fk.to,
+        onDelete: fk.onDelete || null,
+        onUpdate: fk.onUpdate || null
+      });
+    }
+  }
+}
+
+function computeSchemaStats(){
+  const tables = Object.keys(SCHEMA).length;
+  let columns = 0, primaryKeys = 0, foreignKeys = 0, indexes = 0, uniqueConstraints = 0;
+  for (const k in SCHEMA){
+    const t = SCHEMA[k];
+    columns += t.columns.length;
+    primaryKeys += (t.primaryKeys || []).length;
+    foreignKeys += (t.foreignKeys || []).length;
+    indexes += (t.indexes || []).length;
+    uniqueConstraints += (t.uniqueConstraints || []).length;
+  }
+  return {
+    tables, columns, primaryKeys, foreignKeys,
+    indexes, uniqueConstraints,
+    relationships: RELATIONS.length
+  };
+}
+
+function replaceSchema(newSchema, newData, schemaName){
+  Object.keys(SCHEMA).forEach(k => delete SCHEMA[k]);
+  Object.keys(DATA).forEach(k => delete DATA[k]);
+  Object.assign(SCHEMA, newSchema);
+  Object.assign(DATA, newData);
+  SCHEMA_NAME = schemaName || null;
+  rebuildRelations();
+  SCHEMA_STATS = computeSchemaStats();
+  renderSegments();
+  renderSchemaSummary();
+  if (typeof onSchemaChanged === 'function') onSchemaChanged();
+}
+function loadDemoSchema(){
+  replaceSchema(DEMO_SCHEMA, DEMO_DATA, 'demo_schema');
+}
+
+
+/* ============================================================
+   PHASE 3. SCHEMA INTELLIGENCE: cardinality + explorer + ER state
+   ============================================================ */
+const ER = { mode:'query', related:false, selected:null, filter:'' };
+let REL_META = [];   // RELATIONS enriched with cardinality
+let JUNCTIONS = [];  // detected N:M link tables
+
+const lcs = x => String(x == null ? '' : x).toLowerCase();
+function tbl(name){ return SCHEMA[lcs(name)] || null; }
+function tblName(name){ const t = tbl(name); return t ? (t.name || name) : name; }
+
+function colsAreUnique(t, colNames){
+  const set = new Set(colNames.map(lcs));
+  const pk = (t.primaryKeys || []).map(lcs);
+  if (pk.length && pk.length === set.size && pk.every(c => set.has(c))) return true;
+  const sameSet = list => list.length === set.size && list.every(c => set.has(lcs(c)));
+  if ((t.uniqueConstraints || []).some(sameSet)) return true;
+  if ((t.indexes || []).some(ix => ix.unique && sameSet(ix.columns))) return true;
+  return false;
+}
+
+function detectJunctions(){
+  JUNCTIONS = [];
+  for (const k in SCHEMA){
+    const t = SCHEMA[k];
+    const fks = t.foreignKeys || [];
+    const targets = new Set(fks.filter(f => tbl(f.toTable)).map(f => lcs(f.toTable)));
+    if (fks.length < 2 || targets.size < 2) continue;
+    const fkCols = new Set(fks.map(f => lcs(f.from)));
+    const pk = (t.primaryKeys || []).map(lcs);
+    const compositePkOfFks = pk.length >= 2 && pk.every(c => fkCols.has(c));
+    const nonFk = t.columns.filter(c => !fkCols.has(lcs(c.name)));
+    const surrogatePure = pk.length === 1 && !fkCols.has(pk[0]) && nonFk.length === 1;
+    const pureLink = nonFk.length === 0 || surrogatePure;
+    if (!(compositePkOfFks || pureLink)) continue;
+    JUNCTIONS.push({ table: t.name || k, targets: [...targets].map(tblName) });
+  }
+}
+
+function buildRelMeta(){
+  REL_META = [];
+  for (const k in SCHEMA){
+    const t = SCHEMA[k];
+    const byTarget = {};
+    (t.foreignKeys || []).forEach(f => { (byTarget[lcs(f.toTable)] = byTarget[lcs(f.toTable)] || []).push(f); });
+    for (const tk in byTarget){
+      const parent = SCHEMA[tk]; if (!parent) continue;
+      const group = byTarget[tk];
+      const childUnique = colsAreUnique(t, group.map(f => f.from));
+      // child side: how many child rows per parent row; parent side: is the parent optional?
+      const childNullable = group.some(f => { const c = t.columns.find(c => lcs(c.name) === lcs(f.from)); return c && c.nullable !== false; });
+      group.forEach(f => REL_META.push({
+        fromTable: t.name || k, fromCol: f.from,
+        toTable: parent.name || tk, toCol: f.to,
+        onDelete: f.onDelete || null, onUpdate: f.onUpdate || null,
+        // parent:child cardinality
+        cardinality: childUnique ? '1:1' : '1:N',
+        childOptional: childNullable,
+        composite: group.length > 1
+      }));
+    }
+  }
+  detectJunctions();
+}
+function relsOf(name){
+  const n = lcs(name);
+  return {
+    out: REL_META.filter(r => lcs(r.fromTable) === n),
+    inc: REL_META.filter(r => lcs(r.toTable) === n),
+    nm:  JUNCTIONS.filter(j => j.targets.map(lcs).includes(n))
+  };
+}
+function neighborsOf(name){
+  const n = lcs(name), out = new Set();
+  REL_META.forEach(r => {
+    if (lcs(r.fromTable) === n) out.add(lcs(r.toTable));
+    if (lcs(r.toTable) === n) out.add(lcs(r.fromTable));
+  });
+  out.delete(n);
+  return out;
+}
+// "orders → users" reads from the child's point of view: N:1
+function cardFromChild(r){ return r.cardinality === '1:1' ? '1:1' : 'N:1'; }
+
+/* ---- Explorer rendering ---- */
+function exSelect(name){
+  ER.selected = name ? lcs(name) : null;
+  renderExplorer();
+  render();
+}
+function renderExplorer(){
+  const tree = document.getElementById('exTree');
+  const det  = document.getElementById('exDetail');
+  const st   = document.getElementById('exStatus');
+  if (!tree) return;
+  const keys = Object.keys(SCHEMA).sort();
+  if (ER.selected && !SCHEMA[ER.selected]) ER.selected = null;
+  st.textContent = keys.length ? `· ${keys.length} tables · ${REL_META.length} relationships` : '';
+  const f = lcs(ER.filter);
+  const shown = keys.filter(k => !f || k.includes(f));
+
+  const relItems = [];
+  const seen = new Set();
+  REL_META.forEach(r => {
+    const key = r.fromTable + '.' + r.fromCol + '>' + r.toTable + '.' + r.toCol;
+    if (seen.has(key)) return; seen.add(key);
+    if (f && !key.toLowerCase().includes(f)) return;
+    relItems.push(r);
+  });
+
+  tree.innerHTML =
+    `<input class="ex-search" id="exSearch" placeholder="Filter tables…" value="${esc(ER.filter)}">` +
+    `<div class="ex-group"><span>Tables</span><span>${shown.length}</span></div>` +
+    (shown.map(k => `<div class="ex-item${ER.selected===k?' on':''}" data-t="${esc(k)}" title="${esc(SCHEMA[k].name||k)}">▦ ${esc(SCHEMA[k].name||k)}<span class="n">${SCHEMA[k].columns.length}</span></div>`).join('')
+      || '<div class="ex-item" style="cursor:default;color:#64748b">no match</div>') +
+    `<div class="ex-group" style="margin-top:8px"><span>Relationships</span><span>${relItems.length}</span></div>` +
+    (relItems.map((r,i) => `<div class="ex-item" data-r="${i}" title="${esc(r.fromTable+'.'+r.fromCol+' → '+r.toTable+'.'+r.toCol)}">⇢ ${esc(r.fromTable)}.${esc(r.fromCol)}<span class="card-tag">${cardFromChild(r)}</span></div>`).join('')
+      || '<div class="ex-item" style="cursor:default;color:#64748b">none declared</div>');
+
+  const sEl = document.getElementById('exSearch');
+  sEl.addEventListener('input', () => {
+    ER.filter = sEl.value;
+    const pos = sEl.selectionStart;
+    renderExplorer();
+    const n = document.getElementById('exSearch'); n.focus(); n.setSelectionRange(pos,pos);
+  });
+  tree.querySelectorAll('[data-t]').forEach(el => el.onclick = () => exSelect(el.dataset.t));
+  tree.querySelectorAll('[data-r]').forEach(el => el.onclick = () => exSelect(relItems[+el.dataset.r].fromTable));
+
+  if (!ER.selected){
+    det.innerHTML = `<div class="ex-empty">Select a table on the left to see its columns, keys, indexes and relationships.<br><br>
+      Tip: the diagram below is in <b>Query Schema</b> mode by default, so only the tables your SQL uses are drawn.</div>`;
+    return;
+  }
+  const t = SCHEMA[ER.selected];
+  const fkMap = {};
+  (t.foreignKeys || []).forEach(fk => fkMap[lcs(fk.from)] = fk);
+  const pkSet = new Set((t.primaryKeys || []).map(lcs));
+  const rels = relsOf(t.name || ER.selected);
+
+  const colRows = t.columns.map(c => {
+    const fk = fkMap[lcs(c.name)];
+    const b = [];
+    if (pkSet.has(lcs(c.name)) || c.isPrimaryKey) b.push('<span class="col-badge pk">PK</span>');
+    if (fk) b.push('<span class="col-badge fk">FK</span>');
+    if (c.isUnique) b.push('<span class="col-badge uq">UQ</span>');
+    if (c.autoIncrement) b.push('<span class="col-badge nl" title="auto-increment">AUTO</span>');
+    return `<tr><td>${esc(c.name)}</td><td>${esc(c.type)}</td><td>${b.join(' ')}</td>
+      <td>${c.nullable === false ? '<span style="color:#5eead4">NOT NULL</span>' : '<span style="color:#94a3b8">nullable</span>'}</td>
+      <td>${c.default === null || c.default === undefined ? '<span class="null">—</span>' : esc(c.default)}</td>
+      <td>${fk ? esc(fk.toTable + '.' + fk.to) : ''}</td></tr>`;
+  }).join('');
+
+  const relRow = (r, dir) => {
+    const other = dir === 'out' ? r.toTable : r.fromTable;
+    const text = `${esc(r.fromTable)}.${esc(r.fromCol)} → ${esc(r.toTable)}.${esc(r.toCol)}`;
+    const why = dir === 'out'
+      ? `Each ${esc(r.fromTable)} row ${r.childOptional ? 'may point' : 'points'} to ${r.cardinality==='1:1'?'one':'one'} ${esc(r.toTable)} row.`
+      : `Each ${esc(r.toTable)} row can be referenced by ${r.cardinality==='1:1'?'at most one':'many'} ${esc(r.fromTable)} row${r.cardinality==='1:1'?'':'s'}.`;
+    return `<div class="ex-rel" data-go="${esc(other)}"><span class="dir ${dir}">${dir==='out'?'references':'referenced by'}</span>${text}<span class="card">${dir==='out'?cardFromChild(r):(r.cardinality==='1:1'?'1:1':'1:N')}</span><span class="why">${why}${r.onDelete?` ON DELETE ${esc(r.onDelete)}.`:''}</span></div>`;
+  };
+  const nmRows = rels.nm.map(j => {
+    const others = j.targets.filter(x => lcs(x) !== lcs(t.name||ER.selected));
+    return others.map(o => `<div class="ex-rel" data-go="${esc(o)}"><span class="dir nm">many-to-many</span>${esc(t.name||ER.selected)} ⇄ ${esc(o)}<span class="card">N:M</span><span class="why">Linked through the junction table <b>${esc(j.table)}</b>.</span></div>`).join('');
+  }).join('');
+
+  const idx = (t.indexes || []).map(ix => `<div class="ex-rel" style="cursor:default"><span class="dir ${ix.unique?'nm':'in'}">${ix.unique?'unique index':'index'}</span>${esc(ix.name||'(unnamed)')} (${ix.columns.map(esc).join(', ')})</div>`).join('');
+  const uqs = (t.uniqueConstraints || []).filter(u => u.length > 1).map(u => `<div class="ex-rel" style="cursor:default"><span class="dir nm">unique</span>(${u.map(esc).join(', ')})</div>`).join('');
+
+  det.innerHTML = `
+    <h3>${esc(t.name||ER.selected)}</h3>
+    <div class="ex-sub">${t.columns.length} columns · PK: ${(t.primaryKeys||[]).length ? (t.primaryKeys.map(esc).join(', ') + ((t.primaryKeys.length>1)?' <i>(composite)</i>':'')) : '<i>none</i>'}
+      ${JUNCTIONS.some(j => lcs(j.table)===ER.selected) ? ' · <b style="color:#f472b6">junction table</b>' : ''}</div>
+    <h4>Columns</h4>
+    <table class="ex-cols"><thead><tr><th>Name</th><th>Type</th><th>Keys</th><th>Null?</th><th>Default</th><th>References</th></tr></thead><tbody>${colRows}</tbody></table>
+    <h4>Relationships</h4>
+    ${rels.out.map(r => relRow(r,'out')).join('')}${rels.inc.map(r => relRow(r,'in')).join('')}${nmRows}
+    ${(!rels.out.length && !rels.inc.length && !rels.nm.length) ? '<div class="ex-sub">No declared relationships for this table.</div>' : ''}
+    ${(idx || uqs) ? '<h4>Indexes &amp; constraints</h4>' + idx + uqs : ''}
+    <div class="ex-actions">
+      <button class="ex-btn" id="exInsert">Insert SELECT * FROM ${esc(t.name||ER.selected)}</button>
+      <button class="ex-btn" id="exFocus">Show in diagram (with neighbours)</button>
+    </div>`;
+  det.querySelectorAll('[data-go]').forEach(el => el.onclick = () => exSelect(el.dataset.go));
+  document.getElementById('exInsert').onclick = () => {
+    editor.value = `SELECT *\nFROM ${t.name||ER.selected}\nLIMIT 20;`; render();
+  };
+  document.getElementById('exFocus').onclick = () => {
+    editor.value = ''; ER.mode = 'query'; syncModeUI(); render();
+    document.getElementById('canvas').scrollIntoView({behavior:'smooth', block:'nearest'});
+  };
+}
+
+function syncModeUI(){
+  document.querySelectorAll('#modeToggle button').forEach(b => b.classList.toggle('on', b.dataset.mode === ER.mode));
+  document.getElementById('relatedChip').classList.toggle('on', ER.related);
+  document.getElementById('relatedChip').style.display = ER.mode === 'query' ? '' : 'none';
+}
+function onSchemaChanged(){
+  ER.selected = null; ER.filter = '';
+  buildRelMeta();
+  renderExplorer();
+}
+
+/* Order tables so related ones sit near each other (BFS from most-connected). */
+function orderByConnectivity(keys){
+  const set = new Set(keys), deg = k => neighborsOf(k).size;
+  const left = [...keys].sort((a,b) => deg(b) - deg(a) || a.localeCompare(b));
+  const out = [], vis = new Set();
+  for (const start of left){
+    if (vis.has(start)) continue;
+    const q = [start]; vis.add(start);
+    while (q.length){
+      const k = q.shift(); out.push(k);
+      [...neighborsOf(k)].filter(n => set.has(n) && !vis.has(n)).sort((a,b)=>deg(b)-deg(a)).forEach(n => { vis.add(n); q.push(n); });
+    }
+  }
+  return out;
+}
+
+const JOIN_COLORS = { INNER:'#5eead4', LEFT:'#fbbf24', RIGHT:'#a78bfa', FULL:'#f472b6', CROSS:'#94a3b8' };
+
+/* ============================================================
+   2. TOKENIZER
+   ============================================================ */
+function tokenize(sql){
+  const tokens = [];
+  let i = 0;
+  const n = sql.length;
+  while (i < n){
+    const c = sql[i];
+    if (/\s/.test(c)) { i++; continue; }
+    if (c === '-' && sql[i+1] === '-'){ while (i < n && sql[i] !== '\n') i++; continue; }
+    if (c === '/' && sql[i+1] === '*'){ i += 2; while (i < n && !(sql[i]==='*' && sql[i+1]==='/')) i++; i += 2; continue; }
+    if (c === "'" || c === '"'){
+      const q = c; let j = i + 1, s = '';
+      while (j < n && sql[j] !== q){ s += sql[j]; j++; }
+      tokens.push({ type:'string', value:s });
+      i = j + 1; continue;
+    }
+    if (/[0-9]/.test(c)){
+      let j = i; while (j < n && /[0-9.]/.test(sql[j])) j++;
+      tokens.push({ type:'number', value: sql.slice(i,j) });
+      i = j; continue;
+    }
+    if (/[A-Za-z_]/.test(c)){
+      let j = i; while (j < n && /[A-Za-z0-9_$]/.test(sql[j])) j++;
+      const v = sql.slice(i,j);
+      tokens.push({ type:'ident', value:v, upper:v.toUpperCase() });
+      i = j; continue;
+    }
+    if (c === '*'){ tokens.push({ type:'punct', value:'*' }); i++; continue; }
+    if ('(),.;'.includes(c)){ tokens.push({ type:'punct', value:c }); i++; continue; }
+    const two = sql.substr(i,2);
+    if (['<=','>=','<>','!='].includes(two)){ tokens.push({ type:'op', value:two }); i += 2; continue; }
+    if ('=<>+-/%'.includes(c)){ tokens.push({ type:'op', value:c }); i++; continue; }
+    i++;
+  }
+  return tokens;
+}
+
+/* ============================================================
+   3. QUERY PARSER
+   ============================================================ */
+const RESERVED = new Set(['JOIN','INNER','LEFT','RIGHT','FULL','OUTER','CROSS','ON','USING','WHERE',
+  'GROUP','ORDER','LIMIT','HAVING','UNION','AS','BY','AND','OR','SELECT','FROM','IS','NOT','NULL','LIKE']);
+const OPS = new Set(['=','<','>','<=','>=','<>','!=']);
+
+function splitTop(tokens, isSep){
+  const out = []; let cur = []; let d = 0;
+  for (const t of tokens){
+    if (t.type === 'punct' && t.value === '(') d++;
+    if (t.type === 'punct' && t.value === ')') d--;
+    if (d === 0 && isSep(t)){ out.push(cur); cur = []; continue; }
+    cur.push(t);
+  }
+  out.push(cur);
+  return out;
+}
+
+function parseOperand(tokens){
+  if (!tokens || !tokens.length) return null;
+  if (tokens.length === 1){
+    const t = tokens[0];
+    if (t.type === 'number') return { literal: parseFloat(t.value) };
+    if (t.type === 'string') return { literal: t.value };
+    if (t.type === 'ident'){
+      if (t.upper === 'NULL')  return { literal: null };
+      if (t.upper === 'TRUE')  return { literal: true };
+      if (t.upper === 'FALSE') return { literal: false };
+      return { col: t.value };
+    }
+    if (t.type === 'punct' && t.value === '*') return { star:true };
+  }
+  if (tokens.length === 3 && tokens[1].type === 'punct' && tokens[1].value === '.'){
+    return { alias: tokens[0].value, col: tokens[2].value };
+  }
+  return null;
+}
+
+function parseComparison(tokens){
+  const toks = tokens.filter(t => !(t.type === 'punct' && (t.value === '(' || t.value === ')')));
+  if (!toks.length) return null;
+
+  const isIdx = toks.findIndex(t => t.type === 'ident' && t.upper === 'IS');
+  if (isIdx >= 0){
+    const not = toks[isIdx+1] && toks[isIdx+1].upper === 'NOT';
+    const left = parseOperand(toks.slice(0, isIdx));
+    if (!left) return null;
+    return { left, op: not ? 'IS NOT NULL' : 'IS NULL', right: { literal:null } };
+  }
+
+  let opIdx = toks.findIndex(t => t.type === 'op' && OPS.has(t.value));
+  let op = opIdx >= 0 ? toks[opIdx].value : null;
+  if (opIdx < 0){
+    const li = toks.findIndex(t => t.type === 'ident' && (t.upper === 'LIKE' || t.upper === 'IN'));
+    if (li >= 0){ opIdx = li; op = toks[li].upper; }
+  }
+  if (opIdx < 0) return null;
+  if (op === '!=') op = '<>';
+
+  const left  = parseOperand(toks.slice(0, opIdx));
+  const right = parseOperand(toks.slice(opIdx + 1));
+  if (!left || !right) return null;
+  return { left, op, right };
+}
+
+function parseConditions(tokens){
+  if (!tokens || !tokens.length) return [];
+  const parts = splitTop(tokens, t => t.type === 'ident' && t.upper === 'AND');
+  const out = [];
+  for (const p of parts){
+    const c = parseComparison(p);
+    if (c) out.push(c);
+    else out.push({ unknown:true });
+  }
+  return out;
+}
+
+function parseSQL(sql){
+  const tokens = tokenize(sql);
+  let pos = 0;
+  const peek = (k=0) => tokens[pos + (k||0)];
+  const atEnd = () => pos >= tokens.length;
+  const isKw = (t, kw) => t && t.type === 'ident' && t.upper === kw.toUpperCase();
+  const eatKw = (kw) => { if (isKw(peek(), kw)){ pos++; return true; } return false; };
+
+  if (!eatKw('SELECT')) throw new Error('Query must start with SELECT');
+
+  const selectTokens = [];
+  let depth = 0;
+  while (!atEnd()){
+    const t = peek();
+    if (t.type === 'punct' && t.value === '(') depth++;
+    if (t.type === 'punct' && t.value === ')') depth--;
+    if (depth === 0 && isKw(t, 'FROM')) break;
+    selectTokens.push(t); pos++;
+  }
+  if (!eatKw('FROM')) throw new Error('Missing FROM clause');
+
+  function parseTableRef(){
+    const t = peek();
+    if (!t || t.type !== 'ident') throw new Error('Expected a table name after FROM/JOIN');
+    const name = t.value; pos++;
+    let alias = name;
+    if (eatKw('AS')){
+      const a = peek();
+      if (a && a.type === 'ident'){ alias = a.value; pos++; }
+    } else if (peek() && peek().type === 'ident' && !RESERVED.has(peek().upper)){
+      alias = peek().value; pos++;
+    }
+    return { name, alias };
+  }
+
+  const tables = [];
+  const joins = [];
+  const root = parseTableRef();
+  tables.push(root);
+  let lastIndex = 0;
+
+  const JOIN_TERMS = new Set(['JOIN','INNER','LEFT','RIGHT','FULL','CROSS','WHERE','GROUP','ORDER','LIMIT','HAVING','UNION']);
+
+  while (!atEnd()){
+    const t = peek();
+
+    if (t.type === 'punct' && t.value === ','){
+      pos++;
+      const r = parseTableRef();
+      tables.push(r);
+      joins.push({ id: joins.length, type:'CROSS', left:lastIndex, right:tables.length-1, conditions:[] });
+      lastIndex = tables.length - 1;
+      continue;
+    }
+    if (t.type === 'ident' && ['WHERE','GROUP','ORDER','LIMIT','HAVING','UNION'].includes(t.upper)) break;
+
+    let jtype = null;
+    if (isKw(t,'JOIN'))       { pos++; jtype = 'INNER'; }
+    else if (isKw(t,'INNER')) { pos++; eatKw('JOIN'); jtype = 'INNER'; }
+    else if (isKw(t,'LEFT'))  { pos++; eatKw('OUTER'); eatKw('JOIN'); jtype = 'LEFT'; }
+    else if (isKw(t,'RIGHT')) { pos++; eatKw('OUTER'); eatKw('JOIN'); jtype = 'RIGHT'; }
+    else if (isKw(t,'FULL'))  { pos++; eatKw('OUTER'); eatKw('JOIN'); jtype = 'FULL'; }
+    else if (isKw(t,'CROSS')) { pos++; eatKw('JOIN'); jtype = 'CROSS'; }
+    else break;
+
+    const r = parseTableRef();
+    tables.push(r);
+    const join = { id: joins.length, type: jtype, left: lastIndex, right: tables.length - 1, conditions: [], using: null };
+
+    if (isKw(peek(), 'ON')){
+      pos++;
+      const condToks = [];
+      let d = 0;
+      while (!atEnd()){
+        const c = peek();
+        if (c.type === 'punct' && c.value === '(') d++;
+        if (c.type === 'punct' && c.value === ')') d--;
+        if (d === 0 && c.type === 'ident' && JOIN_TERMS.has(c.upper)) break;
+        if (d === 0 && c.type === 'punct' && c.value === ',') break;
+        condToks.push(c); pos++;
+      }
+      join.conditions = parseConditions(condToks);
+    } else if (isKw(peek(), 'USING')){
+      pos++;
+      const cols = [];
+      while (!atEnd() && !(peek().type === 'punct' && peek().value === ')')){
+        if (peek().type === 'ident'){ cols.push(peek().value); }
+        pos++;
+      }
+      pos++;
+      join.using = cols;
+    }
+
+    joins.push(join);
+    lastIndex = tables.length - 1;
+  }
+
+  let where = null, orderBy = [], limit = null;
+
+  if (eatKw('WHERE')){
+    const toks = []; let d = 0;
+    while (!atEnd()){
+      const t = peek();
+      if (t.type === 'punct' && t.value === '(') d++;
+      if (t.type === 'punct' && t.value === ')') d--;
+      if (d === 0 && t.type === 'ident' && ['GROUP','ORDER','LIMIT','HAVING'].includes(t.upper)) break;
+      toks.push(t); pos++;
+    }
+    where = parseConditions(toks);
+  }
+  if (eatKw('GROUP')){
+    while (!atEnd() && !(peek().type === 'ident' && ['ORDER','LIMIT','HAVING'].includes(peek().upper))) pos++;
+  }
+  if (eatKw('HAVING')){
+    while (!atEnd() && !(peek().type === 'ident' && ['ORDER','LIMIT'].includes(peek().upper))) pos++;
+  }
+  if (eatKw('ORDER')){
+    eatKw('BY');
+    const toks = []; let d = 0;
+    while (!atEnd()){
+      const t = peek();
+      if (t.type === 'punct' && t.value === '(') d++;
+      if (t.type === 'punct' && t.value === ')') d--;
+      if (d === 0 && t.type === 'ident' && t.upper === 'LIMIT') break;
+      toks.push(t); pos++;
+    }
+    splitTop(toks, t => t.type === 'punct' && t.value === ',').forEach(part => {
+      let dir = 'ASC', p = part;
+      const last = p[p.length-1];
+      if (last && last.type === 'ident' && (last.upper === 'ASC' || last.upper === 'DESC')){
+        dir = last.upper; p = p.slice(0, -1);
+      }
+      const ref = parseOperand(p);
+      if (ref) orderBy.push({ ref, dir });
+    });
+  }
+  if (eatKw('LIMIT')){
+    const t = peek();
+    if (t && t.type === 'number'){ limit = parseInt(t.value, 10); pos++; }
+  }
+
+  return { tables, joins, where, orderBy, limit, selectItems: parseSelectItems(selectTokens) };
+}
+
+function parseSelectItems(tokens){
+  const parts = splitTop(tokens, t => t.type === 'punct' && t.value === ',');
+  return parts.map(part => {
+    if (!part.length) return { kind:'expr', text:'' };
+    let alias = null, expr = part;
+
+    const asIdx = part.findIndex(t => t.type === 'ident' && t.upper === 'AS');
+    if (asIdx >= 0 && part[asIdx+1]){
+      alias = part[asIdx+1].value;
+      expr = part.slice(0, asIdx);
+    } else if (part.length >= 2){
+      const last = part[part.length-1];
+      const prev = part[part.length-2];
+      if (last.type === 'ident' && !(prev.type === 'punct' && prev.value === '.') &&
+          !(last.type === 'ident' && ['ASC','DESC'].includes(last.upper))){
+        alias = last.value;
+        expr = part.slice(0, -1);
+      }
+    }
+
+    if (expr.length === 1 && expr[0].type === 'punct' && expr[0].value === '*'){
+      return { kind:'star' };
+    }
+    if (expr.length === 3 && expr[1].type === 'punct' && expr[1].value === '.' &&
+        expr[2].type === 'punct' && expr[2].value === '*'){
+      return { kind:'tableStar', table: expr[0].value };
+    }
+    const ref = parseOperand(expr);
+    if (ref && (ref.col !== undefined)){
+      const name = alias || ref.col;
+      return { kind:'column', ref, name };
+    }
+    return { kind:'expr', text: expr.map(t => t.value ?? t.upper ?? '').join(''), name: alias || 'expr' };
+  });
+}
+
+/* ============================================================
+   4. QUERY EXECUTOR
+   ============================================================ */
+function getVal(row, col){
+  if (!row) return undefined;
+  if (col in row) return row[col];
+  const lc = String(col).toLowerCase();
+  for (const k in row) if (k.toLowerCase() === lc) return row[k];
+  return undefined;
+}
+
+function operandValue(ref, bag, aliasMap){
+  if (!ref) return undefined;
+  if ('literal' in ref) return ref.literal;
+  if (ref.alias){
+    const key = aliasMap[ref.alias.toLowerCase()];
+    if (key && bag[key]) return getVal(bag[key], ref.col);
+    return undefined;
+  }
+  for (const k in bag){
+    if (bag[k] && getVal(bag[k], ref.col) !== undefined) return getVal(bag[k], ref.col);
+  }
+  return undefined;
+}
+
+function looseEq(a, b){
+  if (a === null || a === undefined) return b === null || b === undefined;
+  if (b === null || b === undefined) return false;
+  if (typeof a === 'number' && typeof b === 'string' && b.trim() !== '' && !isNaN(+b)) return a === +b;
+  if (typeof b === 'number' && typeof a === 'string' && a.trim() !== '' && !isNaN(+a)) return b === +a;
+  return String(a) === String(b);
+}
+
+function evalComparison(c, bag, aliasMap){
+  if (!c || c.unknown) return undefined;
+  const l = operandValue(c.left, bag, aliasMap);
+  const r = operandValue(c.right, bag, aliasMap);
+
+  if (c.op === 'IS NULL')     return l === null || l === undefined;
+  if (c.op === 'IS NOT NULL') return !(l === null || l === undefined);
+  if (l === undefined || r === undefined) return undefined;
+
+  switch (c.op){
+    case '=':  return looseEq(l, r);
+    case '<>': return !looseEq(l, r);
+    case '>':  return l > r;
+    case '<':  return l < r;
+    case '>=': return l >= r;
+    case '<=': return l <= r;
+    case 'LIKE': {
+      const rx = new RegExp('^' + String(r).replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/%/g,'.*').replace(/_/g,'.') + '$', 'i');
+      return rx.test(String(l));
+    }
+    default: return undefined;
+  }
+}
+
+function conditionsMatch(conds, bag, aliasMap){
+  if (!conds || !conds.length) return true;
+  for (const c of conds){
+    const res = evalComparison(c, bag, aliasMap);
+    if (res === false) return false;
+  }
+  return true;
+}
+
+function executeQuery(parsed){
+  const { tables, joins, where, orderBy, limit, selectItems } = parsed;
+  if (!tables.length) return { empty:true };
+
+  for (const t of tables){
+    if (!DATA[t.name.toLowerCase()]) return { error: `Unknown table "${t.name}" — not found in schema.` };
+  }
+
+  const aliasMap = {};
+  tables.forEach(t => {
+    aliasMap[t.name.toLowerCase()] = t.alias;
+    aliasMap[t.alias.toLowerCase()] = t.alias;
+  });
+
+  let rows = (DATA[tables[0].name.toLowerCase()] || []).map(r => ({ [tables[0].alias]: r }));
+
+  for (const j of joins){
+    const rt = tables[j.right];
+    const rightRows = DATA[rt.name.toLowerCase()] || [];
+    const next = [];
+    const matchedRight = new Set();
+
+    for (const lrow of rows){
+      let matched = false;
+      rightRows.forEach((rrow, ri) => {
+        const cand = Object.assign({}, lrow, { [rt.alias]: rrow });
+        if (conditionsMatch(j.conditions, cand, aliasMap)){
+          matched = true; matchedRight.add(ri); next.push(cand);
+        }
+      });
+      if (!matched && (j.type === 'LEFT' || j.type === 'FULL')){
+        next.push(Object.assign({}, lrow, { [rt.alias]: null }));
+      }
+    }
+    if (j.type === 'RIGHT' || j.type === 'FULL'){
+      rightRows.forEach((rrow, ri) => {
+        if (!matchedRight.has(ri)){
+          const blank = {};
+          tables.slice(0, j.right).forEach(t => blank[t.alias] = null);
+          blank[rt.alias] = rrow;
+          next.push(blank);
+        }
+      });
+    }
+    rows = next;
+  }
+
+  if (where && where.length){
+    rows = rows.filter(bag => conditionsMatch(where, bag, aliasMap));
+  }
+
+  const outCols = [];
+  for (const item of selectItems){
+    if (item.kind === 'star'){
+      tables.forEach(t => {
+        const sch = SCHEMA[t.name.toLowerCase()];
+        if (!sch) return;
+        sch.columns.forEach(c => outCols.push({ name: c.name, get: bag => getVal(bag[t.alias], c.name) }));
+      });
+    } else if (item.kind === 'tableStar'){
+      const t = tables.find(x => x.alias.toLowerCase() === item.table.toLowerCase() ||
+                                 x.name.toLowerCase() === item.table.toLowerCase());
+      const sch = t && SCHEMA[t.name.toLowerCase()];
+      if (t && sch) sch.columns.forEach(c => outCols.push({ name: c.name, get: bag => getVal(bag[t.alias], c.name) }));
+    } else if (item.kind === 'column'){
+      outCols.push({ name: item.name, get: bag => operandValue(item.ref, bag, aliasMap) });
+    } else {
+      outCols.push({ name: item.name || 'expr', get: () => '—' });
+    }
+  }
+
+  if (orderBy && orderBy.length){
+    rows = rows.slice().sort((a, b) => {
+      for (const o of orderBy){
+        const va = operandValue(o.ref, a, aliasMap);
+        const vb = operandValue(o.ref, b, aliasMap);
+        let cmp = 0;
+        if (va === vb) cmp = 0;
+        else if (va === null || va === undefined) cmp = -1;
+        else if (vb === null || vb === undefined) cmp = 1;
+        else cmp = va > vb ? 1 : -1;
+        if (cmp !== 0) return o.dir === 'DESC' ? -cmp : cmp;
+      }
+      return 0;
+    });
+  }
+
+  const total = rows.length;
+  if (limit != null) rows = rows.slice(0, limit);
+
+  const MAX = 100;
+  const shown = rows.slice(0, MAX);
+  const data = shown.map(bag => outCols.map(c => {
+    const v = c.get(bag);
+    return v === undefined ? null : v;
+  }));
+
+  return { columns: outCols.map(c => c.name), rows: data, total, truncated: rows.length > MAX };
+}
+
+/* ============================================================
+   5. RENDERING
+   ============================================================ */
+const NS = 'http://www.w3.org/2000/svg';
+const canvas = document.getElementById('canvas');
+const svg    = document.getElementById('links');
+const colEls = new Map();
+const cardEls = new Map();
+let lastEdges = [];
+let lastFkEdges = [];
+
+const esc = s => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const colKey = (alias, col) => String(alias).toLowerCase() + '::' + String(col).toLowerCase();
+
+/* Phase 2: schema summary panel */
+function renderSchemaSummary(errMsg){
+  const el = document.getElementById('schemaSummary');
+  if (!el) return;
+  if (errMsg){
+    el.classList.add('show','is-error');
+    el.innerHTML = `
+      <div class="ss-title">
+        <span class="ss-check">⚠</span> Schema could not be loaded
+        ${SCHEMA_NAME ? `<span class="ss-name">${esc(SCHEMA_NAME)}</span>` : ''}
+      </div>
+      <div style="font-size:11px;color:#fca5a5;font-family:var(--mono);">${esc(errMsg)}</div>`;
+    return;
+  }
+  el.classList.remove('is-error');
+  if (!SCHEMA_STATS || SCHEMA_STATS.tables === 0){
+    el.classList.remove('show');
+    return;
+  }
+  const s = SCHEMA_STATS;
+  el.classList.add('show');
+  el.innerHTML = `
+    <div class="ss-title">
+      <span class="ss-check">✓</span> Schema loaded
+      ${SCHEMA_NAME ? `<span class="ss-name">${esc(SCHEMA_NAME)}</span>` : ''}
+    </div>
+    <div class="ss-grid">
+      <div class="ss-item"><span class="ss-num">${s.tables}</span><span class="ss-lbl">Tables</span></div>
+      <div class="ss-item"><span class="ss-num">${s.columns}</span><span class="ss-lbl">Columns</span></div>
+      <div class="ss-item"><span class="ss-num">${s.primaryKeys}</span><span class="ss-lbl">PKs</span></div>
+      <div class="ss-item"><span class="ss-num">${s.foreignKeys}</span><span class="ss-lbl">FKs</span></div>
+      <div class="ss-item"><span class="ss-num">${s.relationships}</span><span class="ss-lbl">Relations</span></div>
+      <div class="ss-item"><span class="ss-num">${s.indexes}</span><span class="ss-lbl">Indexes</span></div>
+      <div class="ss-item"><span class="ss-num">${s.uniqueConstraints}</span><span class="ss-lbl">Uniques</span></div>
+    </div>`;
+}
+
+function resolveRefToTable(ref, parsed){
+  if (!ref || ref.literal !== undefined || !ref.col) return null;
+  const lc = s => String(s).toLowerCase();
+  if (ref.alias){
+    const t = parsed.tables.find(x => lc(x.alias) === lc(ref.alias) || lc(x.name) === lc(ref.alias));
+    return t ? { alias: t.alias, col: ref.col } : null;
+  }
+  const owners = parsed.tables.filter(t => {
+    const sch = SCHEMA[t.name.toLowerCase()];
+    return sch && sch.columns.some(c => lc(c.name) === lc(ref.col));
+  });
+  if (owners.length === 1) return { alias: owners[0].alias, col: ref.col };
+  return null;
+}
+
+function buildEdges(parsed){
+  const edges = [];
+  for (const j of parsed.joins){
+    let first = true;
+    for (const c of j.conditions){
+      if (!c || c.unknown) continue;
+      const a = resolveRefToTable(c.left, parsed);
+      const b = resolveRefToTable(c.right, parsed);
+      if (a && b){
+        edges.push({ from: a, to: b, join: j, primary: first });
+        first = false;
+      }
+    }
+    if (j.using){
+      for (const col of j.using){
+        const lt = parsed.tables[j.left], rt = parsed.tables[j.right];
+        edges.push({ from:{ alias: lt.alias, col }, to:{ alias: rt.alias, col }, join: j, primary: first });
+        first = false;
+      }
+    }
+    if (first){
+      const lt = parsed.tables[j.left], rt = parsed.tables[j.right];
+      if (lt && rt){
+        edges.push({ from:{ alias: lt.alias }, to:{ alias: rt.alias }, join: j, primary: true });
+      }
+    }
+  }
+  return edges;
+}
+
+function createCard(displayName, alias, isRoot, dimmed, schema){
+  const card = document.createElement('div');
+  const classes = ['table-card'];
+  if (isRoot) classes.push('is-root');
+  if (dimmed) classes.push('is-unused');
+  card.className = classes.join(' ');
+
+  const cols = schema ? schema.columns : [];
+  const showAlias = alias.toLowerCase() !== displayName.toLowerCase();
+  const fkCols = new Set((schema && schema.foreignKeys || []).map(f => String(f.from).toLowerCase()));
+
+  card.innerHTML =
+    `<div class="tc-head">
+       <span class="tc-name">${esc(displayName)}</span>
+       ${showAlias ? `<span class="tc-alias">${esc(alias)}</span>` : ''}
+     </div>
+     <ul class="tc-cols">
+       ${cols.length
+          ? cols.map(c => {
+              const isFk = fkCols.has(c.name.toLowerCase());
+              const badges = [];
+              if (c.isPrimaryKey) badges.push('<span class="col-badge pk" title="Primary key">PK</span>');
+              if (isFk)           badges.push('<span class="col-badge fk" title="Foreign key">FK</span>');
+              if (c.isUnique)     badges.push('<span class="col-badge uq" title="Unique">UQ</span>');
+              if (c.nullable === false && !c.isPrimaryKey) badges.push('<span class="col-badge nn" title="Not null">NN</span>');
+              const fkDef = (schema.foreignKeys || []).find(f => String(f.from).toLowerCase() === c.name.toLowerCase());
+              const cls = [c.isPrimaryKey ? 'c-pk' : '', isFk ? 'c-fk' : '', (c.nullable !== false && !c.isPrimaryKey) ? 'c-null' : ''].filter(Boolean).join(' ');
+              const tip = [c.type, c.isPrimaryKey ? 'primary key' : '', fkDef ? ('→ ' + fkDef.toTable + '.' + fkDef.to) : '', c.isUnique ? 'unique' : '', c.nullable === false ? 'not null' : 'nullable'].filter(Boolean).join(' · ');
+              return `<li data-col="${esc(c.name)}" class="${cls}" title="${esc(tip)}">
+                        <span class="col-name">${esc(c.name)}</span>
+                        ${badges.join('')}
+                        <span class="col-type">${esc(c.type)}</span>
+                      </li>`;
+            }).join('')
+          : `<li class="tc-empty">unknown table</li>`}
+     </ul>`;
+  return card;
+}
+
+function registerCard(card, alias, name){
+  const aKey = String(alias).toLowerCase();
+  const nKey = String(name).toLowerCase();
+  cardEls.set(aKey, card);
+  if (nKey !== aKey) cardEls.set(nKey, card);
+
+  card.querySelectorAll('li[data-col]').forEach(li => {
+    colEls.set(colKey(alias, li.dataset.col), li);
+    if (nKey !== aKey) colEls.set(colKey(name, li.dataset.col), li);
+  });
+}
+
+function renderCanvas(parsed){
+  [...canvas.querySelectorAll('.table-card, .join-badge, .grid-divider, .canvas-hint, .card-badge')].forEach(n => n.remove());
+  svg.innerHTML = '';
+  colEls.clear();
+  cardEls.clear();
+
+  const hasQuery = parsed.tables.length > 0;
+  const usedKeys = new Set(parsed.tables.map(t => t.name.toLowerCase()));
+  const allKeys = Object.keys(SCHEMA);
+  const total = allKeys.length;
+  const addCard = (key, alias, isRoot, dimmed, extraCls) => {
+    const entry = SCHEMA[key];
+    const card = createCard(entry ? (entry.name || key) : key, alias, isRoot, dimmed, entry);
+    if (ER.selected === key) card.classList.add('is-selected');
+    if (extraCls) card.classList.add(extraCls);
+    card.querySelector('.tc-head').onclick = () => { if (entry) exSelect(key); };
+    canvas.appendChild(card);
+    registerCard(card, alias, entry ? (entry.name || key) : key);
+    return card;
+  };
+  const divider = (html, muted) => {
+    const d = document.createElement('div');
+    d.className = 'grid-divider' + (muted ? ' grid-divider-muted' : '');
+    d.innerHTML = html; canvas.appendChild(d);
+  };
+  const hint = html => { const h = document.createElement('div'); h.className = 'canvas-hint'; h.innerHTML = html; canvas.appendChild(h); };
+
+  let drawnKeys = new Set();     // tables physically drawn (schema keys)
+
+  if (ER.mode === 'full'){
+    if (hasQuery) divider(`Tables in this query <span class="count">${parsed.tables.length}</span>`);
+    if (hasQuery) parsed.tables.forEach((t, idx) => { addCard(t.name.toLowerCase(), t.alias, idx === 0, false); drawnKeys.add(t.name.toLowerCase()); });
+    const rest = orderByConnectivity(allKeys.filter(k => !usedKeys.has(k)));
+    if (rest.length){
+      divider(hasQuery ? `Other tables in schema <span class="count">${rest.length}</span>` : `Full schema <span class="count">${rest.length}</span>`, hasQuery);
+      rest.forEach(k => { addCard(k, k, false, hasQuery); drawnKeys.add(k); });
+    }
+  } else if (hasQuery){
+    divider(`Tables in this query <span class="count">${parsed.tables.length}</span>`);
+    parsed.tables.forEach((t, idx) => {
+      const k = t.name.toLowerCase();
+      addCard(k, t.alias, idx === 0, false);
+      drawnKeys.add(k);
+    });
+    if (ER.related){
+      const rel = new Set();
+      usedKeys.forEach(k => neighborsOf(k).forEach(n => { if (!usedKeys.has(n)) rel.add(n); }));
+      if (rel.size){
+        divider(`Related tables (via declared FKs) <span class="count">${rel.size}</span>`, true);
+        orderByConnectivity([...rel]).forEach(k => { addCard(k, k, false, false, 'is-related'); drawnKeys.add(k); });
+      }
+    }
+  } else if (ER.selected && SCHEMA[ER.selected]){
+    const nb = orderByConnectivity([...neighborsOf(ER.selected)]);
+    divider(`Selected table <span class="count">${esc(SCHEMA[ER.selected].name || ER.selected)}</span>`);
+    addCard(ER.selected, ER.selected, true, false); drawnKeys.add(ER.selected);
+    if (nb.length){
+      divider(`Directly related tables <span class="count">${nb.length}</span>`, true);
+      nb.forEach(k => { addCard(k, k, false, false, 'is-related'); drawnKeys.add(k); });
+    }
+  } else {
+    hint(`<b>Query Schema</b> mode shows only the tables your SQL uses, so a big schema never gets in the way.<br>
+          Write a query on the left, or pick a table in the Schema Explorer. Switch to <b>Full Schema</b> to see all ${total} tables.`);
+  }
+
+  /* query edges (JOINs written in the SQL) — unchanged behaviour */
+  const edges = buildEdges(parsed);
+  lastEdges = edges;
+  edges.forEach(e => {
+    const a = e.from.col ? colEls.get(colKey(e.from.alias, e.from.col)) : null;
+    const b = e.to.col   ? colEls.get(colKey(e.to.alias, e.to.col))     : null;
+    if (a) a.classList.add('is-key');
+    if (b) b.classList.add('is-key');
+  });
+
+  /* declared FK edges (schema relationships) */
+  const aliasFor = k => { const t = parsed.tables.find(t => t.name.toLowerCase() === k); return t ? t.alias : k; };
+  const covered = new Set();   // FK links already shown by a query JOIN
+  edges.forEach(e => {
+    if (!e.from.col || !e.to.col) return;
+    const ft = parsed.tables.find(t => lcs(t.alias) === lcs(e.from.alias));
+    const tt = parsed.tables.find(t => lcs(t.alias) === lcs(e.to.alias));
+    if (!ft || !tt) return;
+    covered.add([lcs(ft.name)+'.'+lcs(e.from.col), lcs(tt.name)+'.'+lcs(e.to.col)].sort().join('|'));
+  });
+  const MAX_FULL_EDGES = 60;
+  let fkEdges = REL_META.filter(r => drawnKeys.has(lcs(r.fromTable)) && drawnKeys.has(lcs(r.toTable)));
+  fkEdges = fkEdges.filter(r => !covered.has([lcs(r.fromTable)+'.'+lcs(r.fromCol), lcs(r.toTable)+'.'+lcs(r.toCol)].sort().join('|')));
+  let fkNote = '';
+  if (ER.mode === 'full' && fkEdges.length > MAX_FULL_EDGES){
+    // too many lines to read: only show those touching the selected table
+    fkEdges = ER.selected ? fkEdges.filter(r => lcs(r.fromTable) === ER.selected || lcs(r.toTable) === ER.selected) : [];
+    fkNote = ' · FK lines hidden (large schema) — select a table to see its links';
+  }
+  fkEdges = fkEdges.map(r => ({
+    kind: 'fk', rel: r,
+    from: { alias: drawnKeys.has(lcs(r.fromTable)) ? aliasFor(lcs(r.fromTable)) : r.fromTable, col: r.fromCol },
+    to:   { alias: aliasFor(lcs(r.toTable)), col: r.toCol }
+  }));
+  lastFkEdges = fkEdges;
+
+  const statusEl = document.getElementById('graphStatus');
+  if (statusEl){
+    const parts = [];
+    if (hasQuery) parts.push(`<b>${usedKeys.size}</b> of ${total} table${total===1?'':'s'} used`);
+    else if (ER.mode === 'full') parts.push(`${total} table${total===1?'':'s'}`);
+    else parts.push(`${drawnKeys.size} shown of ${total}`);
+    if (hasQuery) parts.push(`${edges.length} join link${edges.length===1?'':'s'}`);
+    parts.push(`${fkEdges.length} FK link${fkEdges.length===1?'':'s'}`);
+    statusEl.innerHTML = parts.join(' · ') + esc(fkNote);
+  }
+
+  requestAnimationFrame(() => requestAnimationFrame(() => drawEdges(edges)));
+}
+
+function anchor(el, otherEl, cr){
+  const r = el.getBoundingClientRect();
+  const o = otherEl.getBoundingClientRect();
+  const x = r.left - cr.left, y = r.top - cr.top;
+  const ox = o.left - cr.left, oy = o.top - cr.top;
+  const dx = (ox + o.width/2) - (x + r.width/2);
+  const dy = (oy + o.height/2) - (y + r.height/2);
+  if (Math.abs(dx) >= Math.abs(dy)){
+    return dx > 0
+      ? { x: x + r.width, y: y + r.height/2, side:'right' }
+      : { x: x,           y: y + r.height/2, side:'left'  };
+  }
+  return dy > 0
+    ? { x: x + r.width/2, y: y + r.height, side:'bottom' }
+    : { x: x + r.width/2, y: y,            side:'top'    };
+}
+
+function curvePath(a, b){
+  let c1, c2;
+  if (a.side === 'left' || a.side === 'right'){
+    const dx = Math.max(42, Math.abs(b.x - a.x) * 0.45);
+    c1 = { x: a.x + (a.side === 'right' ? dx : -dx), y: a.y };
+    c2 = { x: b.x + (b.side === 'left'  ? -dx : dx), y: b.y };
+  } else {
+    const dy = Math.max(34, Math.abs(b.y - a.y) * 0.45);
+    c1 = { x: a.x, y: a.y + (a.side === 'bottom' ? dy : -dy) };
+    c2 = { x: b.x, y: b.y + (b.side === 'top'    ? -dy : dy) };
+  }
+  const d = `M ${a.x} ${a.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${b.x} ${b.y}`;
+  const mid = {
+    x: (a.x + 3*c1.x + 3*c2.x + b.x) / 8,
+    y: (a.y + 3*c1.y + 3*c2.y + b.y) / 8,
+  };
+  return { d, mid };
+}
+
+
+/* FK anchors: leave from the card's side edge at the column's row height */
+function fkAnchors(fromLi, toLi, cr){
+  const fc = fromLi.closest('.table-card').getBoundingClientRect();
+  const tc = toLi.closest('.table-card').getBoundingClientRect();
+  const fr = fromLi.getBoundingClientRect(), tr = toLi.getBoundingClientRect();
+  const fy = fr.top - cr.top + fr.height/2, ty = tr.top - cr.top + tr.height/2;
+  const fcx = fc.left + fc.width/2, tcx = tc.left + tc.width/2;
+  let fSide, tSide;
+  if (Math.abs(fcx - tcx) < Math.min(fc.width, tc.width) * 0.6){ fSide = tSide = (fc.right + 60 > cr.right ? 'left' : 'right'); }   // stacked: loop through the gutter
+  else if (tcx > fcx){ fSide = 'right'; tSide = 'left'; }
+  else { fSide = 'left'; tSide = 'right'; }
+  const X = (rect, side) => (side === 'right' ? rect.right : rect.left) - cr.left;
+  return { a:{ x:X(fc,fSide), y:fy, side:fSide }, b:{ x:X(tc,tSide), y:ty, side:tSide } };
+}
+function fkCurve(a, b){
+  const stacked = a.side === b.side;
+  const k = stacked ? 38 : Math.max(42, Math.abs(b.x - a.x) * 0.45);
+  const sgn = s => s === 'right' ? 1 : -1;
+  const c1 = { x: a.x + sgn(a.side)*k, y: a.y }, c2 = { x: b.x + sgn(b.side)*k, y: b.y };
+  return `M ${a.x} ${a.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${b.x} ${b.y}`;
+}
+
+/* ER end markers: 'many' = crow's foot, 'one' = double bar (exactly one) */
+function drawEnd(pt, kind, color){
+  const g = document.createElementNS(NS, 'g');
+  g.setAttribute('stroke', color); g.setAttribute('stroke-width', '1.6');
+  g.setAttribute('fill', 'none'); g.setAttribute('stroke-linecap', 'round');
+  const dirs = { right:[1,0], left:[-1,0], bottom:[0,1], top:[0,-1] };
+  const [dx, dy] = dirs[pt.side] || [1,0];       // pointing away from the card
+  const px = -dy, py = dx;                        // perpendicular
+  const line = (x1,y1,x2,y2) => { const l = document.createElementNS(NS,'line');
+    l.setAttribute('x1',x1); l.setAttribute('y1',y1); l.setAttribute('x2',x2); l.setAttribute('y2',y2); g.appendChild(l); };
+  if (kind === 'many'){
+    const bx = pt.x + dx*13, by = pt.y + dy*13;
+    line(bx, by, pt.x + px*6, pt.y + py*6);
+    line(bx, by, pt.x - px*6, pt.y - py*6);
+    line(bx, by, pt.x, pt.y);
+  } else {
+    [9, 14].forEach(off => {
+      const cx = pt.x + dx*off, cy = pt.y + dy*off;
+      line(cx + px*6, cy + py*6, cx - px*6, cy - py*6);
+    });
+  }
+  svg.appendChild(g);
+}
+
+function drawEdges(edges){
+  const cr = canvas.getBoundingClientRect();
+  const W = canvas.scrollWidth  || canvas.clientWidth;
+  const H = canvas.scrollHeight || canvas.clientHeight;
+  svg.setAttribute('width', W);
+  svg.setAttribute('height', H);
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.innerHTML = '';
+  canvas.querySelectorAll('.join-badge, .card-badge').forEach(b => b.remove());
+
+  const seen = new Set();
+
+  /* declared FK relationships first (underneath the query joins) */
+  (lastFkEdges || []).forEach(e => {
+    const fromEl = colEls.get(colKey(e.from.alias, e.from.col));
+    const toEl   = colEls.get(colKey(e.to.alias, e.to.col));
+    if (!fromEl || !toEl) return;
+    const { a, b } = fkAnchors(fromEl, toEl, cr);   // a = child (FK) side, b = parent (PK) side
+    const d = fkCurve(a, b);
+    const isSel = ER.selected && (lcs(e.rel.fromTable) === ER.selected || lcs(e.rel.toTable) === ER.selected);
+    const path = document.createElementNS(NS, 'path');
+    path.setAttribute('d', d);
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', '#a78bfa');
+    path.setAttribute('stroke-width', isSel ? '2.4' : '1.5');
+    path.setAttribute('stroke-dasharray', '6 4');
+    path.setAttribute('opacity', isSel ? '1' : '0.7');
+    const ttl = document.createElementNS(NS, 'title');
+    ttl.textContent = `${e.rel.fromTable}.${e.rel.fromCol} → ${e.rel.toTable}.${e.rel.toCol} (declared FK, ${e.rel.cardinality === '1:1' ? '1:1' : 'many-to-one'})`;
+    path.appendChild(ttl);
+    svg.appendChild(path);
+    drawEnd(a, e.rel.cardinality === '1:1' ? 'one' : 'many', '#a78bfa');   // child end
+    drawEnd(b, 'one', '#a78bfa');  // parent end
+    // cardinality label near the child end
+    const lab = document.createElement('div');
+    lab.className = 'join-badge card-badge';
+    lab.style.setProperty('--c', '#a78bfa');
+    lab.style.fontSize = '9px'; lab.style.padding = '1px 6px';
+    const lp = { x: a.x + (a.side === 'right' ? 26 : -26), y: a.y - 11 };
+    lab.style.left = lp.x + 'px'; lab.style.top = lp.y + 'px';
+    lab.textContent = e.rel.cardinality === '1:1' ? '1:1' : 'N:1';
+    canvas.appendChild(lab);
+  });
+
+  edges.forEach(e => {
+    const fromEl = e.from.col ? colEls.get(colKey(e.from.alias, e.from.col)) : cardEls.get(String(e.from.alias).toLowerCase());
+    const toEl   = e.to.col   ? colEls.get(colKey(e.to.alias, e.to.col))       : cardEls.get(String(e.to.alias).toLowerCase());
+    if (!fromEl || !toEl) return;
+
+    const a = anchor(fromEl, toEl, cr);
+    const b = anchor(toEl, fromEl, cr);
+    const { d, mid } = curvePath(a, b);
+    const color = JOIN_COLORS[e.join.type] || JOIN_COLORS.INNER;
+
+    const path = document.createElementNS(NS, 'path');
+    path.setAttribute('d', d);
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', color);
+    path.setAttribute('stroke-width', '2');
+    path.setAttribute('stroke-linecap', 'round');
+    path.setAttribute('opacity', '0.8');
+    svg.appendChild(path);
+
+    [a, b].forEach(pt => {
+      const c = document.createElementNS(NS, 'circle');
+      c.setAttribute('cx', pt.x);
+      c.setAttribute('cy', pt.y);
+      c.setAttribute('r', 3.5);
+      c.setAttribute('fill', color);
+      c.setAttribute('opacity', '0.95');
+      svg.appendChild(c);
+    });
+
+    if (!seen.has(e.join.id)){
+      seen.add(e.join.id);
+      const badge = document.createElement('div');
+      badge.className = 'join-badge';
+      badge.style.left = mid.x + 'px';
+      badge.style.top  = mid.y + 'px';
+      badge.style.setProperty('--c', color);
+      badge.textContent = e.join.type === 'INNER' ? 'JOIN' : e.join.type + ' JOIN';
+      canvas.appendChild(badge);
+    }
+  });
+}
+
+function renderJoinList(parsed){
+  const box = document.getElementById('joinList');
+  if (!parsed.tables.length){
+    box.innerHTML = `<div class="join-row"><span class="jcond">No query yet — the graph shows your full schema.</span></div>`;
+    return;
+  }
+  if (!parsed.joins.length){
+    box.innerHTML = `<div class="join-row"><span class="jcond">Single table — no joins in this query.</span></div>`;
+    return;
+  }
+  box.innerHTML = parsed.joins.map(j => {
+    const lt = parsed.tables[j.left], rt = parsed.tables[j.right];
+    const color = JOIN_COLORS[j.type] || JOIN_COLORS.INNER;
+    const label = j.type === 'INNER' ? 'JOIN' : j.type + ' JOIN';
+
+    let condText = '';
+    if (j.using) condText = 'using (' + j.using.join(', ') + ')';
+    else if (j.conditions && j.conditions.length){
+      condText = 'on ' + j.conditions.map(c => {
+        if (c.unknown) return '…';
+        const fmt = r => r.literal !== undefined
+          ? (typeof r.literal === 'string' ? `'${r.literal}'` : String(r.literal))
+          : (r.alias ? r.alias + '.' + r.col : r.col);
+        return `${fmt(c.left)} ${c.op} ${fmt(c.right)}`;
+      }).join(' and ');
+    } else {
+      condText = 'no condition (cartesian product)';
+    }
+
+    return `<div class="join-row">
+      <span class="jtype" style="--c:${color}">${esc(label)}</span>
+      <span class="jpath">${esc(lt ? lt.alias : '?')} <span class="jarow">→</span> ${esc(rt.alias)}</span>
+      <span class="jcond">${esc(condText)}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderResult(parsed){
+  const wrap = document.getElementById('resultWrap');
+  const note = document.getElementById('resultNote');
+
+  if (!parsed.tables.length){
+    wrap.innerHTML = `<div class="empty">Write a SELECT query to see results here.</div>`;
+    note.textContent = '';
+    return;
+  }
+
+  const res = executeQuery(parsed);
+  if (res.error){
+    wrap.innerHTML = `<div class="empty">${esc(res.error)}</div>`;
+    note.textContent = '';
+    return;
+  }
+  if (!res.rows || !res.rows.length){
+    wrap.innerHTML = `<div class="empty">Query returned no rows.</div>`;
+    note.textContent = '';
+    return;
+  }
+
+  const head = res.columns.map(c => `<th>${esc(c)}</th>`).join('');
+  const body = res.rows.map(r =>
+    '<tr>' + r.map(v => v === null || v === undefined
+      ? `<td><span class="null">NULL</span></td>`
+      : `<td>${esc(v)}</td>`).join('') + '</tr>'
+  ).join('');
+
+  wrap.innerHTML = `<table class="res"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+
+  const parts = [`${res.total} row${res.total === 1 ? '' : 's'} matched`];
+  if (res.truncated) parts.push('showing first 100');
+  if (parsed.selectItems.some(i => i.kind === 'expr')) parts.push('expressions shown as "—"');
+  note.textContent = '· ' + parts.join(' · ');
+}
+
+/* ============================================================
+   6. SCHEMA PARSER  (Phase 2 enhanced)
+   ============================================================ */
+function stripSqlComments(sql){
+  return sql.replace(/--[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+}
+
+function splitSqlStatements(sql){
+  const stmts = [];
+  let cur = '';
+  let inStr = null;
+  for (let i = 0; i < sql.length; i++){
+    const c = sql[i];
+    if (inStr){
+      cur += c;
+      if (c === inStr && sql[i-1] !== '\\') inStr = null;
+      continue;
+    }
+    if (c === "'" || c === '"' || c === '`'){ inStr = c; cur += c; continue; }
+    if (c === ';'){ if (cur.trim()) stmts.push(cur.trim()); cur = ''; continue; }
+    cur += c;
+  }
+  if (cur.trim()) stmts.push(cur.trim());
+  return stmts;
+}
+
+function splitTopLevelStr(str, sep){
+  const out = [];
+  let cur = '';
+  let depth = 0;
+  let inStr = null;
+  for (let i = 0; i < str.length; i++){
+    const c = str[i];
+    if (inStr){
+      cur += c;
+      if (c === inStr && str[i-1] !== '\\') inStr = null;
+      continue;
+    }
+    if (c === "'" || c === '"' || c === '`'){ inStr = c; cur += c; continue; }
+    if (c === '(' || c === '['){ depth++; cur += c; continue; }
+    if (c === ')' || c === ']'){ depth--; cur += c; continue; }
+    if (c === sep && depth === 0){ out.push(cur); cur = ''; continue; }
+    cur += c;
+  }
+  out.push(cur);
+  return out;
+}
+
+function normalizeIdent(raw){
+  return String(raw).replace(/[`"\[\]]/g, '').split('.').pop().trim();
+}
+
+function coerceSqlValue(s){
+  s = String(s).trim();
+  if (/^NULL$/i.test(s))  return null;
+  if (/^TRUE$/i.test(s))  return true;
+  if (/^FALSE$/i.test(s)) return false;
+  if (/^'.*'$/.test(s) || /^".*"$/.test(s)){
+    let inner = s.slice(1, -1);
+    if (s[0] === "'") inner = inner.replace(/''/g, "'").replace(/\\'/g, "'");
+    else              inner = inner.replace(/\\"/g, '"');
+    return inner;
+  }
+  if (/^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(s)) return parseFloat(s);
+  return s;
+}
+
+const CONSTRAINT_LEADERS = /^(PRIMARY|FOREIGN|UNIQUE|CHECK|CONSTRAINT|KEY|INDEX|FULLTEXT|SPATIAL|EXCLUDE|PARTITION)\b/i;
+
+function parseCreateTable(stmt){
+  const m = stmt.match(/CREATE\s+(?:TEMPORARY\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([`"\[\]\w.]+)\s*\(([\s\S]*)\)\s*([^)]*)$/i);
+  if (!m) return null;
+  const rawName = normalizeIdent(m[1]);
+  const body = m[2];
+  const parts = splitTopLevelStr(body, ',');
+
+  const columns = [];
+  const foreignKeys = [];
+  const primaryKeys = [];
+  const uniqueConstraints = [];
+  const indexes = [];
+
+  /* --- table-level PRIMARY KEY (col1, col2) --- */
+  const pkRe = /(?:CONSTRAINT\s+[`"\[\]\w]+\s+)?PRIMARY\s+KEY\s*\(([^)]*)\)/gi;
+  let pm;
+  while ((pm = pkRe.exec(body))){
+    pm[1].split(',').forEach(c => {
+      const name = normalizeIdent(c.trim());
+      if (name) primaryKeys.push(name);
+    });
+  }
+
+  /* --- table-level FOREIGN KEY (col) REFERENCES t(c) [ON DELETE ...] [ON UPDATE ...] --- */
+  const fkRe = /(?:CONSTRAINT\s+[`"\[\]\w]+\s+)?FOREIGN\s+KEY\s*\(([^)]*)\)\s*REFERENCES\s+([`"\[\]\w.]+)\s*\(([^)]*)\)((?:\s+ON\s+(?:DELETE|UPDATE)\s+(?:CASCADE|SET\s+NULL|RESTRICT|NO\s+ACTION|SET\s+DEFAULT))*)/gi;
+  let fm;
+  while ((fm = fkRe.exec(body))){
+    const fromCols = fm[1].split(',').map(s => normalizeIdent(s.trim())).filter(Boolean);
+    const toTable = normalizeIdent(fm[2]);
+    const toCols = fm[3].split(',').map(s => normalizeIdent(s.trim())).filter(Boolean);
+    const extra = fm[4] || '';
+    const delM = extra.match(/ON\s+DELETE\s+(CASCADE|SET\s+NULL|RESTRICT|NO\s+ACTION|SET\s+DEFAULT)/i);
+    const updM = extra.match(/ON\s+UPDATE\s+(CASCADE|SET\s+NULL|RESTRICT|NO\s+ACTION|SET\s+DEFAULT)/i);
+    const onDelete = delM ? delM[1].toUpperCase().replace(/\s+/g,' ') : null;
+    const onUpdate = updM ? updM[1].toUpperCase().replace(/\s+/g,' ') : null;
+    for (let i = 0; i < fromCols.length; i++){
+      foreignKeys.push({ from: fromCols[i], toTable, to: toCols[i] || toCols[0], onDelete, onUpdate });
+    }
+  }
+
+  /* --- table-level UNIQUE (col1, col2) --- */
+  const uqRe = /(?:CONSTRAINT\s+[`"\[\]\w]+\s+)?UNIQUE\s*(?:KEY\s+[`"\[\]\w]+\s*)?\(([^)]*)\)/gi;
+  let um;
+  while ((um = uqRe.exec(body))){
+    const cols = um[1].split(',').map(c => normalizeIdent(c.trim())).filter(Boolean);
+    if (cols.length) uniqueConstraints.push(cols);
+  }
+
+  /* --- table-level INDEX/KEY name (col) --- */
+  const ixRe = /(?:^|,)\s*(?:(UNIQUE)\s+)?(?:INDEX|KEY)\s+([`"\[\]\w]+)?\s*\(([^)]*)\)/gi;
+  let im;
+  while ((im = ixRe.exec(body))){
+    const idxName = im[2] ? normalizeIdent(im[2]) : null;
+    const cols = im[3].split(',').map(c => normalizeIdent(c.replace(/\s+(ASC|DESC)$/i, '').trim())).filter(Boolean);
+    if (cols.length) indexes.push({ name: idxName, columns: cols, unique: !!im[1] });
+  }
+
+  /* --- column definitions --- */
+  for (const rawPart of parts){
+    const p = rawPart.trim();
+    if (!p) continue;
+    if (CONSTRAINT_LEADERS.test(p)) continue;
+
+    const cm = p.match(/^([`"\[\]\w]+)\s+([A-Za-z][\w]*(?:\s*\([^)]*\))?(?:\s+UNSIGNED)?)/);
+    if (!cm) continue;
+    const colName = normalizeIdent(cm[1]);
+    let colType = cm[2].trim();
+    colType = colType.split('(')[0].split(/\s+/)[0].toLowerCase();
+
+    const inlinePk = /\bPRIMARY\s+KEY\b/.test(p);
+    const inlineUq = /\bUNIQUE\b/.test(p) && !inlinePk;
+    const notNull  = /\bNOT\s+NULL\b/.test(p);
+    const auto     = /\bAUTO_INCREMENT\b|\bAUTOINCREMENT\b|\bSERIAL\b/i.test(p);
+    const nullable = !notNull && !inlinePk;
+    let defaultVal = null;
+    const dm = p.match(/\bDEFAULT\s+('(?:[^']|'')*'|"(?:[^"]|"")*"|[^\s,)]+)/i);
+    if (dm) defaultVal = coerceSqlValue(dm[1]);
+
+    columns.push({
+      name: colName,
+      type: colType,
+      nullable,
+      default: defaultVal,
+      isPrimaryKey: inlinePk,
+      isUnique: inlineUq,
+      autoIncrement: auto
+    });
+
+    if (inlinePk) primaryKeys.push(colName);
+    if (inlineUq) uniqueConstraints.push([colName]);
+
+    /* inline FK: REFERENCES other(col) */
+    const im2 = p.match(/\bREFERENCES\s+([`"\[\]\w.]+)\s*\(\s*([`"\[\]\w]+)\s*\)/i);
+    if (im2){
+      foreignKeys.push({
+        from: colName,
+        toTable: normalizeIdent(im2[1]),
+        to: normalizeIdent(im2[2]),
+        onDelete: null, onUpdate: null
+      });
+    }
+  }
+
+  /* de-dupe PKs */
+  const pksDeduped = [...new Set(primaryKeys)];
+
+  /* apply PK/unique info to column objects */
+  const pkSet = new Set(pksDeduped.map(c => c.toLowerCase()));
+  const uqCols = new Set();
+  uniqueConstraints.forEach(list => {
+    if (list.length === 1) uqCols.add(list[0].toLowerCase());
+  });
+  columns.forEach(c => {
+    if (pkSet.has(c.name.toLowerCase())) { c.isPrimaryKey = true; c.nullable = false; }
+    if (uqCols.has(c.name.toLowerCase())) c.isUnique = true;
+  });
+
+  return {
+    name: rawName,
+    columns,
+    primaryKeys: pksDeduped,
+    foreignKeys,
+    indexes,
+    uniqueConstraints
+  };
+}
+
+function parseCreateIndex(stmt){
+  const m = stmt.match(/CREATE\s+(UNIQUE\s+)?INDEX\s+(?:IF\s+NOT\s+EXISTS\s+)?([`"\[\]\w]+)\s+ON\s+([`"\[\]\w.]+)\s*\(([^)]*)\)/i);
+  if (!m) return null;
+  const unique = !!m[1];
+  const idxName = normalizeIdent(m[2]);
+  const tableName = normalizeIdent(m[3]);
+  const cols = m[4].split(',').map(c => normalizeIdent(String(c).replace(/\s+(ASC|DESC)$/i,'').trim())).filter(Boolean);
+  if (!cols.length) return null;
+  return { name: idxName, tableName, columns: cols, unique };
+}
+
+function parseInsertValues(str){
+  const tuples = [];
+  let i = 0;
+  const n = str.length;
+  while (i < n){
+    while (i < n && /[\s,]/.test(str[i])) i++;
+    if (i >= n) break;
+    if (str[i] !== '(') break;
+    i++;
+    const values = [];
+    let cur = '';
+    let depth = 1;
+    let inStr = null;
+    while (i < n && depth > 0){
+      const c = str[i];
+      if (inStr){
+        cur += c;
+        if (c === inStr && str[i-1] !== '\\') inStr = null;
+        i++; continue;
+      }
+      if (c === "'" || c === '"'){ inStr = c; cur += c; i++; continue; }
+      if (c === '('){ depth++; cur += c; i++; continue; }
+      if (c === ')'){ depth--; if (depth === 0){ i++; break; } cur += c; i++; continue; }
+      if (c === ','){ values.push(coerceSqlValue(cur)); cur = ''; i++; continue; }
+      cur += c; i++;
+    }
+    if (cur.trim() !== '') values.push(coerceSqlValue(cur));
+    else if (cur.length === 0 && values.length === 0) values.push(null);
+    tuples.push(values);
+  }
+  return tuples;
+}
+
+function parseInsert(stmt){
+  const m = stmt.match(/INSERT\s+INTO\s+([`"\[\]\w.]+)\s*(?:\(([^)]*)\))?\s*VALUES\s*([\s\S]*)$/i);
+  if (!m) return null;
+  const name = normalizeIdent(m[1]);
+  const colList = m[2]
+    ? m[2].split(',').map(c => normalizeIdent(c.trim())).filter(Boolean)
+    : null;
+  const tuples = parseInsertValues(m[3]);
+  return { name, columns: colList, rows: tuples };
+}
+
+function extractSchemaName(text){
+  let m = text.match(/CREATE\s+DATABASE\s+(?:IF\s+NOT\s+EXISTS\s+)?([`"\[\]\w]+)/i);
+  if (m) return normalizeIdent(m[1]);
+  m = text.match(/CREATE\s+SCHEMA\s+(?:IF\s+NOT\s+EXISTS\s+)?([`"\[\]\w]+)/i);
+  if (m) return normalizeIdent(m[1]);
+  m = text.match(/USE\s+([`"\[\]\w]+)/i);
+  if (m) return normalizeIdent(m[1]);
+  return null;
+}
+
+function parseSchemaFile(text, fileName){
+  const clean = stripSqlComments(text);
+  const stmts = splitSqlStatements(clean);
+  const schema = {};
+  const data   = {};
+  const pendingIndexes = [];
+  let ctCount = 0, insCount = 0, rowsInserted = 0, idxCount = 0;
+
+  for (const stmt of stmts){
+    if (/^CREATE\s+(?:TEMPORARY\s+)?TABLE/i.test(stmt)){
+      const t = parseCreateTable(stmt);
+      if (t && t.columns.length){
+        const key = t.name.toLowerCase();
+        schema[key] = t;
+        if (!data[key]) data[key] = [];
+        ctCount++;
+      }
+    } else if (/^CREATE\s+(?:UNIQUE\s+)?INDEX/i.test(stmt)){
+      const ix = parseCreateIndex(stmt);
+      if (ix){
+        pendingIndexes.push(ix);
+        idxCount++;
+      }
+    } else if (/^INSERT\s+INTO/i.test(stmt)){
+      const ins = parseInsert(stmt);
+      if (!ins) continue;
+      const key = ins.name.toLowerCase();
+      if (!data[key]) data[key] = [];
+      const cols = ins.columns
+        || (schema[key] ? schema[key].columns.map(c => c.name) : []);
+      for (const tuple of ins.rows){
+        const row = {};
+        cols.forEach((c, i) => { row[c] = tuple[i] !== undefined ? tuple[i] : null; });
+        data[key].push(row);
+        rowsInserted++;
+      }
+      insCount++;
+    }
+  }
+
+  // attach external indexes to their tables
+  for (const ix of pendingIndexes){
+    const key = ix.tableName.toLowerCase();
+    if (schema[key]){
+      schema[key].indexes.push({ name: ix.name, columns: ix.columns, unique: ix.unique });
+    }
+  }
+
+  let schemaName = extractSchemaName(clean);
+  if (!schemaName && fileName){
+    schemaName = fileName.replace(/\.(sql|txt)$/i, '');
+  }
+
+  return { schema, data, schemaName, ctCount, insCount, idxCount, rowsInserted };
+}
+
+/* ============================================================
+   7. SEGMENTS PANEL
+   ============================================================ */
+function renderSegments(){
+  const bar = document.getElementById('segmentsBar');
+  const list = document.getElementById('segmentsList');
+  const count = document.getElementById('segCount');
+
+  if (!RELATIONS.length){
+    bar.classList.remove('show');
+    list.innerHTML = '';
+    return;
+  }
+  bar.classList.add('show');
+  count.textContent = RELATIONS.length + ' relation' + (RELATIONS.length === 1 ? '' : 's');
+
+  list.innerHTML = '';
+  const seen = new Set();
+  RELATIONS.forEach(rel => {
+    const joinTxt = `JOIN ${rel.toTable} ON ${rel.fromTable}.${rel.fromCol} = ${rel.toTable}.${rel.toCol}`;
+    if (seen.has(joinTxt)) return;
+    seen.add(joinTxt);
+    const chip = document.createElement('button');
+    chip.className = 'seg-chip';
+    chip.type = 'button';
+    chip.title = 'Click to insert at cursor';
+    chip.innerHTML = `<span class="seg-fk">FK</span>${esc(joinTxt)}`;
+    chip.onclick = () => insertAtCursor(joinTxt);
+    list.appendChild(chip);
+  });
+}
+
+function insertAtCursor(text){
+  const start = editor.selectionStart;
+  const end = editor.selectionEnd;
+  const value = editor.value;
+  const before = value.substring(0, start);
+  const after = value.substring(end);
+
+  const beforeTrim = before.replace(/\s+$/, '');
+  const needsNewline = beforeTrim.length > 0 && !/\n[ \t]*$/.test(before);
+  const insert = (needsNewline ? '\n' : '') + text;
+
+  editor.value = before + insert + after;
+  const pos = before.length + insert.length;
+  editor.setSelectionRange(pos, pos);
+  editor.focus();
+  render();
+}
+
+/* ============================================================
+   8. AUTOCOMPLETE
+   ============================================================ */
+const ac = { el: null, list: null, hint: null, items: [], index: 0, open: false, wordStart: 0 };
+
+function initAutocomplete(){
+  ac.el   = document.getElementById('autocomplete');
+  ac.list = ac.el.querySelector('.ac-list');
+  ac.hint = document.getElementById('acCount');
+
+  ac.list.addEventListener('mousedown', e => {
+    const item = e.target.closest('.ac-item');
+    if (!item) return;
+    e.preventDefault();
+    ac.index = parseInt(item.dataset.i, 10);
+    acceptAutocomplete();
+  });
+}
+
+function getCaretCoordinates(textarea, position){
+  let mirror = document.getElementById('__caret_mirror__');
+  if (!mirror){
+    mirror = document.createElement('div');
+    mirror.id = '__caret_mirror__';
+    document.body.appendChild(mirror);
+  }
+  const style = getComputedStyle(textarea);
+  ['fontFamily','fontSize','fontWeight','fontStyle','letterSpacing','textTransform',
+   'wordSpacing','textIndent','lineHeight','paddingTop','paddingRight','paddingBottom',
+   'paddingLeft','borderTopWidth','borderRightWidth','borderBottomWidth','borderLeftWidth',
+   'boxSizing','whiteSpace','wordWrap','overflowWrap','tabSize','MozTabSize']
+   .forEach(p => { try { mirror.style[p] = style[p]; } catch(e){} });
+  Object.assign(mirror.style, {
+    position:'absolute', visibility:'hidden', top:'-9999px', left:'-9999px',
+    width: textarea.clientWidth + 'px', height:'auto',
+    whiteSpace:'pre-wrap', wordWrap:'break-word', overflow:'hidden'
+  });
+
+  const value = textarea.value;
+  mirror.textContent = value.substring(0, position);
+  const span = document.createElement('span');
+  span.textContent = value.substring(position) || '.';
+  mirror.appendChild(span);
+
+  const bt = parseFloat(style.borderTopWidth) || 0;
+  const bl = parseFloat(style.borderLeftWidth) || 0;
+  const lh = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.4;
+  const coords = { top: span.offsetTop + bt, left: span.offsetLeft + bl, lineHeight: lh };
+  mirror.textContent = '';
+  return coords;
+}
+
+function positionAutocomplete(){
+  const startCoords = getCaretCoordinates(editor, ac.wordStart);
+  const endCoords   = getCaretCoordinates(editor, editor.selectionStart);
+  const rect = editor.getBoundingClientRect();
+  const st = getComputedStyle(editor);
+  const bt = parseFloat(st.borderTopWidth) || 0;
+  const bl = parseFloat(st.borderLeftWidth) || 0;
+
+  let x = rect.left + bl + endCoords.left;
+  let y = rect.top + bt + endCoords.top + endCoords.lineHeight;
+
+  const popupW = ac.el.offsetWidth || 320;
+  const popupH = ac.el.offsetHeight || 240;
+
+  if (x + popupW > window.innerWidth - 10) x = window.innerWidth - popupW - 10;
+  if (x < 10) x = 10;
+  if (y + popupH > window.innerHeight - 10){
+    y = rect.top + bt + startCoords.top - popupH;
+  }
+  if (y < 10) y = 10;
+
+  ac.el.style.left = x + 'px';
+  ac.el.style.top  = y + 'px';
+}
+
+function hideAutocomplete(){ ac.open = false; ac.el.classList.remove('show'); ac.items = []; }
+
+function showAutocomplete(suggestions, wordStart){
+  if (!suggestions.length){ hideAutocomplete(); return; }
+  ac.items = suggestions;
+  ac.index = 0;
+  ac.wordStart = wordStart;
+
+  ac.list.innerHTML = suggestions.map((s, i) => `
+    <div class="ac-item ${i === 0 ? 'active' : ''}" data-i="${i}">
+      <span class="ac-kind ${s.kind}">${esc(s.kindLabel || s.kind)}</span>
+      <span class="ac-label">${esc(s.label)}</span>
+      ${s.detail ? `<span class="ac-detail">${esc(s.detail)}</span>` : ''}
+    </div>
+  `).join('');
+  if (ac.hint) ac.hint.textContent = suggestions.length + ' items';
+
+  ac.el.classList.add('show');
+  ac.open = true;
+  positionAutocomplete();
+}
+
+function updateActive(){
+  [...ac.list.children].forEach((el, i) => {
+    el.classList.toggle('active', i === ac.index);
+    if (i === ac.index) el.scrollIntoView({ block:'nearest' });
+  });
+}
+
+function acceptAutocomplete(){
+  if (!ac.open || !ac.items.length) return;
+  const item = ac.items[ac.index];
+  if (!item) return;
+  const value = editor.value;
+  const start = ac.wordStart;
+  const end = editor.selectionStart;
+  const before = value.substring(0, start);
+  const after = value.substring(end);
+  const newValue = before + item.insert + after;
+  const pos = before.length + item.insert.length;
+  editor.value = newValue;
+  editor.setSelectionRange(pos, pos);
+  hideAutocomplete();
+  editor.focus();
+  render();
+}
+
+function getActiveTables(sql){
+  const tokens = tokenize(sql);
+  const tables = [];
+  const skipAlias = new Set(['JOIN','INNER','LEFT','RIGHT','FULL','CROSS','OUTER','ON','USING','WHERE',
+    'GROUP','ORDER','LIMIT','HAVING','UNION','AND','OR','BY','AS']);
+  for (let i = 0; i < tokens.length; i++){
+    const t = tokens[i];
+    if (t.type === 'ident' && (t.upper === 'FROM' || t.upper === 'JOIN')){
+      let j = i + 1;
+      if (tokens[j] && tokens[j].type === 'ident'){
+        const name = tokens[j].value;
+        let alias = name;
+        j++;
+        if (tokens[j] && tokens[j].type === 'ident' && tokens[j].upper === 'AS'){
+          j++;
+          if (tokens[j] && tokens[j].type === 'ident'){ alias = tokens[j].value; j++; }
+        } else if (tokens[j] && tokens[j].type === 'ident' && !skipAlias.has(tokens[j].upper)){
+          alias = tokens[j].value; j++;
+        }
+        tables.push({ name, alias });
+        i = j - 1;
+      }
+    }
+  }
+  return tables;
+}
+
+function detectClause(sql){
+  const tokens = tokenize(sql);
+  let clause = 'START';
+  let depth = 0;
+  for (const t of tokens){
+    if (t.type === 'punct' && t.value === '(') depth++;
+    else if (t.type === 'punct' && t.value === ')') depth--;
+    if (depth > 0) continue;
+    if (t.type === 'ident'){
+      const u = t.upper;
+      if (u === 'SELECT') clause = 'SELECT';
+      else if (u === 'FROM') clause = 'FROM';
+      else if (u === 'WHERE') clause = 'WHERE';
+      else if (u === 'GROUP') clause = 'GROUP';
+      else if (u === 'ORDER') clause = 'ORDER';
+      else if (u === 'HAVING') clause = 'HAVING';
+      else if (u === 'LIMIT') clause = 'LIMIT';
+      else if (u === 'ON') clause = 'ON';
+      else if (u === 'USING') clause = 'USING';
+      else if (['JOIN','INNER','LEFT','RIGHT','FULL','CROSS','OUTER'].includes(u)) clause = 'JOIN';
+    }
+  }
+  return clause;
+}
+
+function filterByPrefix(suggestions, prefix){
+  if (!prefix) return suggestions.slice(0, 60);
+  const p = prefix.toLowerCase();
+  const starts = [], contains = [];
+  for (const s of suggestions){
+    const l = s.label.toLowerCase();
+    if (l.startsWith(p)) starts.push(s);
+    else if (l.includes(p)) contains.push(s);
+  }
+  return starts.concat(contains).slice(0, 60);
+}
+
+function buildSuggestions(sql, cursorPos){
+  const before = sql.substring(0, cursorPos);
+  const wordMatch = before.match(/[A-Za-z_][A-Za-z0-9_$]*$/);
+  const currentWord = wordMatch ? wordMatch[0] : '';
+  const wordStart = cursorPos - currentWord.length;
+  const beforeWord = before.substring(0, wordStart);
+  const dotMatch = beforeWord.match(/([A-Za-z_][A-Za-z0-9_$]*)\.\s*$/);
+  const qualifier = dotMatch ? dotMatch[1] : null;
+  const ctxSrc = qualifier
+    ? beforeWord.substring(0, beforeWord.length - qualifier.length - 1)
+    : beforeWord;
+
+  const activeTables = getActiveTables(before);
+  const aliasMap = {};
+  activeTables.forEach(t => {
+    aliasMap[t.alias.toLowerCase()] = t.name.toLowerCase();
+    aliasMap[t.name.toLowerCase()] = t.name.toLowerCase();
+  });
+
+  const suggestions = [];
+  const seen = new Set();
+  const add = (s) => {
+    const k = s.kind + '::' + s.label;
+    if (seen.has(k)) return;
+    seen.add(k); suggestions.push(s);
+  };
+
+  if (qualifier){
+    const tName = aliasMap[qualifier.toLowerCase()] || qualifier.toLowerCase();
+    const sch = SCHEMA[tName];
+    if (sch){
+      sch.columns.forEach(c => {
+        const detail = [c.type];
+        if (c.isPrimaryKey) detail.push('PK');
+        if (c.isUnique) detail.push('UQ');
+        add({ kind:'col', kindLabel:'col', label: c.name, insert: c.name, detail: detail.join(' · ') });
+      });
+    }
+    return { suggestions: filterByPrefix(suggestions, currentWord), wordStart, cursorPos };
+  }
+
+  const clause = detectClause(ctxSrc);
+
+  if (clause === 'FROM' || clause === 'JOIN'){
+    Object.keys(SCHEMA).forEach(k => {
+      const entry = SCHEMA[k];
+      add({
+        kind:'tbl', kindLabel:'table',
+        label: entry.name || k, insert: entry.name || k,
+        detail: `${entry.columns.length} col${entry.columns.length === 1 ? '' : 's'}`
+      });
+    });
+    if (clause === 'JOIN' && activeTables.length){
+      const lastTable = activeTables[activeTables.length - 1];
+      const lastKey = (aliasMap[lastTable.alias.toLowerCase()] || lastTable.name).toLowerCase();
+      RELATIONS.forEach(rel => {
+        if (rel.fromTable.toLowerCase() === lastKey){
+          const seg = `${rel.toTable} ON ${lastTable.alias}.${rel.fromCol} = ${rel.toTable}.${rel.toCol}`;
+          add({ kind:'seg', kindLabel:'fk', label: seg, insert: seg, detail: '→ ' + rel.toTable });
+        } else if (rel.toTable.toLowerCase() === lastKey){
+          const seg = `${rel.fromTable} ON ${rel.fromTable}.${rel.fromCol} = ${lastTable.alias}.${rel.toCol}`;
+          add({ kind:'seg', kindLabel:'fk', label: seg, insert: seg, detail: '← ' + rel.fromTable });
+        }
+      });
+    }
+  }
+  else if (clause === 'ON'){
+    if (activeTables.length >= 2){
+      const right = activeTables[activeTables.length - 1];
+      const left  = activeTables[activeTables.length - 2];
+      const lKey = (aliasMap[left.alias.toLowerCase()] || left.name).toLowerCase();
+      const rKey = (aliasMap[right.alias.toLowerCase()] || right.name).toLowerCase();
+
+      RELATIONS.forEach(rel => {
+        if (rel.fromTable.toLowerCase() === lKey && rel.toTable.toLowerCase() === rKey){
+          const seg = `${left.alias}.${rel.fromCol} = ${right.alias}.${rel.toCol}`;
+          add({ kind:'seg', kindLabel:'fk', label: seg, insert: seg, detail: 'FK' });
+        }
+        if (rel.fromTable.toLowerCase() === rKey && rel.toTable.toLowerCase() === lKey){
+          const seg = `${right.alias}.${rel.fromCol} = ${left.alias}.${rel.toCol}`;
+          add({ kind:'seg', kindLabel:'fk', label: seg, insert: seg, detail: 'FK' });
+        }
+      });
+
+      const lCols = new Set(SCHEMA[lKey] ? SCHEMA[lKey].columns.map(c => c.name.toLowerCase()) : []);
+      const rSch = SCHEMA[rKey];
+      if (rSch) rSch.columns.forEach(c => {
+        if (lCols.has(c.name.toLowerCase())){
+          const seg = `${left.alias}.${c.name} = ${right.alias}.${c.name}`;
+          add({ kind:'seg', kindLabel:'=', label: seg, insert: seg, detail: 'same name' });
+        }
+      });
+    }
+    activeTables.forEach(t => {
+      const key = (aliasMap[t.alias.toLowerCase()] || t.name).toLowerCase();
+      const sch = SCHEMA[key];
+      if (!sch) return;
+      sch.columns.forEach(c => {
+        add({ kind:'col', kindLabel:'col', label: `${t.alias}.${c.name}`, insert: `${t.alias}.${c.name}`, detail: c.type });
+      });
+    });
+    ['AND','OR'].forEach(k => add({ kind:'kw', kindLabel:'kw', label:k, insert:k + ' ', detail:'' }));
+  }
+  else if (['SELECT','WHERE','ORDER','GROUP','HAVING'].includes(clause)){
+    if (clause === 'SELECT'){
+      add({ kind:'kw', kindLabel:'*', label:'*', insert:'*', detail:'all columns' });
+      activeTables.forEach(t => {
+        add({ kind:'kw', kindLabel:'*', label: `${t.alias}.*`, insert: `${t.alias}.*`, detail: t.name });
+      });
+    }
+    activeTables.forEach(t => {
+      const key = (aliasMap[t.alias.toLowerCase()] || t.name).toLowerCase();
+      const sch = SCHEMA[key];
+      if (!sch) return;
+      sch.columns.forEach(c => {
+        const detail = [t.alias, c.type];
+        if (c.isPrimaryKey) detail.push('PK');
+        if (c.isUnique) detail.push('UQ');
+        add({ kind:'col', kindLabel:'col', label: c.name, insert: c.name, detail: detail.join(' · ') });
+        add({ kind:'col', kindLabel:'col', label: `${t.alias}.${c.name}`, insert: `${t.alias}.${c.name}`, detail: c.type });
+      });
+    });
+    if (clause === 'WHERE' || clause === 'HAVING'){
+      ['AND','OR'].forEach(k => add({ kind:'kw', kindLabel:'kw', label:k, insert:k + ' ', detail:'' }));
+    } else if (clause === 'SELECT'){
+      ['AS'].forEach(k => add({ kind:'kw', kindLabel:'kw', label:k, insert:k + ' ', detail:'' }));
+    }
+  }
+  else if (clause === 'USING'){
+    if (activeTables.length >= 2){
+      const right = activeTables[activeTables.length - 1];
+      const left  = activeTables[activeTables.length - 2];
+      const lKey = (aliasMap[left.alias.toLowerCase()] || left.name).toLowerCase();
+      const rKey = (aliasMap[right.alias.toLowerCase()] || right.name).toLowerCase();
+      const lCols = new Set(SCHEMA[lKey] ? SCHEMA[lKey].columns.map(c => c.name.toLowerCase()) : []);
+      (SCHEMA[rKey] ? SCHEMA[rKey].columns : []).forEach(c => {
+        if (lCols.has(c.name.toLowerCase())){
+          add({ kind:'col', kindLabel:'col', label: c.name, insert: c.name, detail: 'shared' });
+        }
+      });
+    }
+  }
+
+  if (!suggestions.length){
+    const kws = clause === 'START'
+      ? ['SELECT','FROM','WHERE','JOIN','LEFT JOIN','INNER JOIN','GROUP BY','ORDER BY','LIMIT']
+      : ['SELECT','FROM','WHERE','JOIN','LEFT JOIN','ON','AND','OR','ORDER BY','GROUP BY','LIMIT'];
+    kws.forEach(k => add({ kind:'kw', kindLabel:'kw', label:k, insert:k + ' ', detail:'' }));
+  }
+
+  return { suggestions: filterByPrefix(suggestions, currentWord), wordStart, cursorPos };
+}
+
+function updateAutocomplete(force){
+  if (!editor.matches(':focus') && !force){ hideAutocomplete(); return; }
+  const sql = editor.value;
+  const cursorPos = editor.selectionStart;
+  if (!sql.trim()){ hideAutocomplete(); return; }
+  const charBefore = sql[cursorPos - 1] || '';
+  if (charBefore === ';' && !force){ hideAutocomplete(); return; }
+  const result = buildSuggestions(sql, cursorPos);
+  if (!result.suggestions.length){ hideAutocomplete(); return; }
+  showAutocomplete(result.suggestions, result.wordStart);
+}
+
+/* ============================================================
+   9. WIRING
+   ============================================================ */
+const editor    = document.getElementById('editor');
+const errBox    = document.getElementById('err');
+const uploadBtn = document.getElementById('uploadBtn');
+const fileInput = document.getElementById('schemaFile');
+const uploadInfo= document.getElementById('uploadInfo');
+const resetBtn  = document.getElementById('resetSchema');
+
+function showError(msg){
+  errBox.textContent = '⚠ ' + msg;
+  errBox.classList.add('show');
+}
+function clearError(){
+  errBox.classList.remove('show');
+  errBox.textContent = '';
+}
+
+const EMPTY_PARSED = { tables: [], joins: [], where: null, orderBy: [], limit: null, selectItems: [] };
+
+function render(){
+  const sql = editor.value;
+  if (!sql.trim()){
+    clearError();
+    renderCanvas(EMPTY_PARSED);
+    renderJoinList(EMPTY_PARSED);
+    renderResult(EMPTY_PARSED);
+    return;
+  }
+  let parsed = EMPTY_PARSED;
+  try {
+    parsed = parseSQL(sql);
+  } catch (e){
+    showError(e.message);
+    renderCanvas(EMPTY_PARSED);
+    renderJoinList(EMPTY_PARSED);
+    renderResult(EMPTY_PARSED);
+    return;
+  }
+  clearError();
+  renderCanvas(parsed);
+  renderJoinList(parsed);
+  renderResult(parsed);
+}
+
+let renderTimer = null, acTimer = null;
+editor.addEventListener('input', () => {
+  clearTimeout(renderTimer);
+  renderTimer = setTimeout(render, 220);
+  clearTimeout(acTimer);
+  acTimer = setTimeout(() => updateAutocomplete(false), 90);
+});
+
+editor.addEventListener('keydown', e => {
+  if (e.key === ' ' && (e.ctrlKey || e.metaKey)){
+    e.preventDefault();
+    updateAutocomplete(true);
+    return;
+  }
+  if (!ac.open){
+    if (e.key === 'Tab'){
+      e.preventDefault();
+      const start = editor.selectionStart, end = editor.selectionEnd;
+      const v = editor.value;
+      editor.value = v.substring(0, start) + '  ' + v.substring(end);
+      editor.setSelectionRange(start + 2, start + 2);
+      updateAutocomplete(false);
+    }
+    return;
+  }
+  switch (e.key){
+    case 'ArrowDown':
+      e.preventDefault(); ac.index = (ac.index + 1) % ac.items.length; updateActive(); break;
+    case 'ArrowUp':
+      e.preventDefault(); ac.index = (ac.index - 1 + ac.items.length) % ac.items.length; updateActive(); break;
+    case 'Enter':
+    case 'Tab':
+      e.preventDefault(); acceptAutocomplete(); break;
+    case 'Escape':
+      e.preventDefault(); hideAutocomplete(); break;
+    case 'ArrowLeft': case 'ArrowRight': case 'Home': case 'End': case 'PageUp': case 'PageDown':
+      hideAutocomplete(); break;
+  }
+});
+
+editor.addEventListener('click', () => setTimeout(() => updateAutocomplete(false), 20));
+editor.addEventListener('blur',  () => setTimeout(() => { if (!ac.el.matches(':hover')) hideAutocomplete(); }, 120));
+document.addEventListener('mousedown', e => {
+  if (ac.el.contains(e.target)) return;
+  if (e.target === editor) return;
+  hideAutocomplete();
+});
+
+let resizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    if (lastEdges.length || lastFkEdges.length) drawEdges(lastEdges);
+    if (ac.open) positionAutocomplete();
+  }, 120);
+});
+document.querySelector('.viz-pane')?.addEventListener('scroll', () => {
+  if (ac.open) positionAutocomplete();
+});
+
+/* -------- upload handling -------- */
+uploadBtn.addEventListener('click', () => fileInput.click());
+
+fileInput.addEventListener('change', async (e) => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const result = parseSchemaFile(text, file.name);
+
+    if (!result.ctCount){
+      SCHEMA_NAME = file.name;
+      renderSchemaSummary('No CREATE TABLE statements found in ' + file.name);
+      throw new Error('No CREATE TABLE statements found in ' + file.name);
+    }
+
+    replaceSchema(result.schema, result.data, result.schemaName);
+
+    uploadInfo.textContent =
+      `${file.name} · ${result.ctCount} table${result.ctCount===1?'':'s'}` +
+      (result.insCount ? ` · ${result.rowsInserted} row${result.rowsInserted===1?'':'s'}` : ' · no data') +
+      (result.idxCount ? ` · ${result.idxCount} index statement${result.idxCount===1?'':'s'}` : '');
+
+    const firstName = Object.keys(result.schema)[0];
+    editor.value = `SELECT *\nFROM ${firstName}\nLIMIT 20;`;
+
+    clearError();
+    render();
+    hideAutocomplete();
+  } catch (err){
+    showError(err.message);
+  } finally {
+    e.target.value = '';
+  }
+});
+
+resetBtn.addEventListener('click', () => {
+  loadDemoSchema();
+  uploadInfo.textContent = 'Using built-in demo schema';
+  editor.value = EXAMPLES['Join chain'];
+  clearError();
+  render();
+  hideAutocomplete();
+});
+
+/* -------- examples -------- */
+const EXAMPLES = {
+  'Join chain': `SELECT
+  u.name        AS customer,
+  o.id          AS order_id,
+  o.status,
+  p.name        AS product,
+  oi.quantity,
+  oi.unit_price
+FROM orders o
+JOIN users u        ON o.user_id = u.id
+JOIN order_items oi ON oi.order_id = o.id
+JOIN products p     ON oi.product_id = p.id
+LEFT JOIN categories c ON p.category_id = c.id
+WHERE o.status = 'paid'
+ORDER BY o.id
+LIMIT 20;`,
+
+  'Star schema': `SELECT
+  o.id, u.name, p.name, pay.method, pay.amount
+FROM orders o
+JOIN users u       ON o.user_id = u.id
+JOIN order_items oi ON oi.order_id = o.id
+JOIN products p    ON oi.product_id = p.id
+LEFT JOIN payments pay ON pay.order_id = o.id
+JOIN countries co  ON u.country_id = co.id
+ORDER BY o.id;`,
+
+  'Left join': `SELECT u.name, o.id AS order_id, o.status
+FROM users u
+LEFT JOIN orders o ON o.user_id = u.id
+ORDER BY u.id;`,
+
+  'Cross join': `SELECT u.name, c.name AS country
+FROM users u
+CROSS JOIN countries c
+LIMIT 12;`,
+
+  'Using + simple': `SELECT *
+FROM orders
+JOIN users USING (id)
+LIMIT 5;`,
+};
+
+const exBox = document.getElementById('examples');
+Object.keys(EXAMPLES).forEach(name => {
+  const b = document.createElement('button');
+  b.className = 'chip';
+  b.textContent = name;
+  b.onclick = () => {
+    editor.value = EXAMPLES[name];
+    render();
+    hideAutocomplete();
+  };
+  exBox.appendChild(b);
+});
+
+
+/* -------- Phase 3 wiring -------- */
+document.querySelectorAll('#modeToggle button').forEach(b => b.addEventListener('click', () => {
+  ER.mode = b.dataset.mode; syncModeUI(); render();
+}));
+const relChip = document.getElementById('relatedChip');
+const toggleRelated = () => { ER.related = !ER.related; syncModeUI(); render(); };
+relChip.addEventListener('click', toggleRelated);
+relChip.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); toggleRelated(); } });
+syncModeUI();
+
+/* -------- boot -------- */
+initAutocomplete();
+loadDemoSchema();
+editor.value = EXAMPLES['Join chain'];
+render();
+</script>
+</body>
+</html>
